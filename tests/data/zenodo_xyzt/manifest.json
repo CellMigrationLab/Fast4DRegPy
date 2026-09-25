@@ -1,6 +1,6 @@
 {
   "fixture": "large_drift_xyzt_fiji_reference.npz",
-  "fixture_sha256": "f1359d075520e97212eb4a2baa47e0bffeb1036326013cdfae36066c384d8510",
+  "fixture_sha256": "3d9e25cdd84a7fc412d03430502b1629520c6484a4780520c62db25ae4a046db",
   "source_record": "https://zenodo.org/records/7514913",
   "requested_archival_record": "https://zenodo.org/records/6534570",
   "source_doi": "10.5281/zenodo.7514913",
@@ -35,17 +35,21 @@
   "frame0_match_score": 0.9999998807907104,
   "raw_roi_yx": [
     179,
-    80,
+    0,
     192,
-    192
+    416
   ],
   "fiji_roi_yx": [
     57,
-    96,
+    0,
     160,
-    160
+    352
   ],
-  "comparison_margin": 16,
+  "comparison_y_margin": 16,
+  "comparison_x_start": 0,
+  "axial_projection_full_lateral_width": 416,
+  "axial_projection_z_height": 69,
+  "fiji_geometry_scale_factor": 6,
   "license": "CC BY 4.0",
   "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
   "selected_published_drift_xyz_pixels": [
@@ -60,5 +64,5 @@
       -2.4789
     ]
   ],
-  "derivation": "Frames 0 and 6; complete Z; frame-0 max-Z template matching maps the archived Fiji overlap crop into the raw image; a central 160x160 Fiji ROI and corresponding raw ROI with 16-pixel XY margin are stored without resampling or intensity normalization"
+  "derivation": "Frames 0 and 6; complete Z; frame-0 max-Z template matching maps the archived Fiji overlap crop into the raw image; a central 160-pixel-high Fiji ROI with its full X extent and a corresponding raw Y ROI with 16-pixel margin are stored. The raw X dimension remains the full 416 pixels so Fiji axial-estimation geometry is preserved. No resampling or intensity normalization is applied"
 }

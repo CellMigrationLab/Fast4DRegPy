@@ -147,7 +147,7 @@ def test_selected_backend_error_is_not_swallowed(monkeypatch):
             raise RuntimeError("backend failed")
 
     monkeypatch.setattr(
-        "fast4dreg.estimation._load_nanopyx_estimator", lambda: BrokenEstimator()
+        "fast4dreg._drift._load_nanopyx_estimator", lambda: BrokenEstimator()
     )
     with pytest.raises(RuntimeError, match="backend failed"):
         _nanopyx_drift(

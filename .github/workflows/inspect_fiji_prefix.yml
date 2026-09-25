@@ -1,0 +1,70 @@
+name: inspect-fiji-reference-prefix
+
+on:
+  push:
+    branches: [zenodo-xyzt-fixture]
+    paths:
+      - ".github/workflows/inspect_fiji_prefix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: zenodo-xyzt-fixture
+      - run: python -m pip install --quiet remotezip
+      - name: Read TIFF prefix metadata
+        run: |
+          python - <<'PY'
+          from remotezip import RemoteZip
+          from pathlib import Path
+          import re, json, struct
+
+          url = "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          member = "2-Synthetic-drift-dataset/2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif"
+          with RemoteZip(url) as z:
+              with z.open(member) as f:
+                  prefix = f.read(8 * 1024 * 1024)
+
+          order = "<" if prefix[:2] == b"II" else ">"
+          if prefix[:2] not in (b"II", b"MM"):
+              raise RuntimeError("Not TIFF")
+          ifd = struct.unpack(order+"I", prefix[4:8])[0]
+          n = struct.unpack(order+"H", prefix[ifd:ifd+2])[0]
+          tags = {}
+          p = ifd + 2
+          for _ in range(n):
+              tag, typ, count, value = struct.unpack(order+"HHII", prefix[p:p+12])
+              tags[tag] = (typ,count,value)
+              p += 12
+
+          def scalar(tag):
+              typ,count,value=tags[tag]
+              if typ==3 and count==1:
+                  return value & 0xffff if order=="<" else value >> 16
+              return value
+          width=scalar(256); height=scalar(257)
+          desc=""
+          if 270 in tags:
+              typ,count,offset=tags[270]
+              desc=prefix[offset:offset+count].rstrip(b"\0").decode("latin1","replace")
+          info={"width":width,"height":height,"image_description":desc[:10000]}
+          for key in ("images","channels","slices","frames","spacing","unit"):
+              m=re.search(rf"(?m)^{key}=([^\r\n]+)",desc)
+              if m: info[key]=m.group(1)
+          Path("docs/fiji_reference_tiff_prefix.json").write_text(
+              json.dumps(info,indent=2)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(info,indent=2))
+          PY
+      - name: Commit metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/fiji_reference_tiff_prefix.json
+          git commit -m "Inspect Fiji reference TIFF prefix"
+          git push

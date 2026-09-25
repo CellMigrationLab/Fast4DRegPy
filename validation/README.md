@@ -73,12 +73,30 @@ parameter does not affect this.
 
 ## Running the original Fiji macro headless
 
-`validation/fiji/` runs the unmodified `time_estimate+apply.ijm` from the
-Fast4DReg repository. `patch_macro.py` only replaces the SciJava `#@` dialog
-parameters with fixed values, replaces the Bio-Formats opener with `open()`,
-and replaces `run("Collect Garbage")` (which blocks in headless ImageJ) with a
-direct `System.gc()` call. Every projection, reslice, scale, crop, estimation
-and correction command is the original.
+`validation/fiji/` runs the original `time_estimate+apply.ijm` from the
+Fast4DReg repository. No macro bug was fixed and no registration logic was
+changed. `patch_macro.py` makes only these headless changes:
+
+1. SciJava `#@` dialog parameters become fixed assignments.
+2. The Bio-Formats opener (`Ext.openImagePlus`, `run("Bio-Formats", ...)`)
+   becomes ImageJ's `open()`; the TIFF data are the same.
+3. `run("Collect Garbage")` becomes `call("java.lang.System.gc")`. The menu
+   command blocks forever in headless ImageJ 1.53t; it only frees memory.
+4. Two lines at the end save the Log window to a file.
+5. For the v1 macro only: NanoJ-Core command names map to the equivalent
+   `F4DR ...` commands of the Fast4DReg jar, and `showMessage` becomes
+   `print`.
+
+`run_fiji_macro.sh` runs ImageJ with a GUI on a virtual display (`xvfb-run`),
+because some macro steps (results-table windows) misbehave in `-batch` mode.
+
+### Timing Fiji on the full movie
+
+`setup_imagej.sh` builds the ImageJ installation below. `time_full_movie.py`
+runs the macro on the full movie with the archive's settings, times it,
+times Fast4DRegPy on the same machine, and compares drift tables and outputs.
+It is available as the manual **fiji full-movie timing** workflow; results of
+the first run are in `validation/results/fiji-full-movie-timing/`.
 
 Setup (Java 11+ and `xvfb-run`):
 

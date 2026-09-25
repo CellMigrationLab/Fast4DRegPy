@@ -5,10 +5,6 @@ name: fiji full-movie timing
 # records runtime and memory for both, and compares Fiji's drift tables and
 # corrected stack with Fast4DRegPy and the archived Fiji result. Manual only.
 on:
-  # TEMPORARY: run once on the audit branch; remove before merging.
-  push:
-    branches: [claude/fast4dreg-py-audit-r2p1py]
-    paths: [".github/workflows/fiji-full-movie-timing.yml", "validation/fiji/**"]
   workflow_dispatch:
 
 jobs:
@@ -48,4 +44,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fiji-full-movie-timing
-          path: validation-results/fiji-timing/*.{json,txt}
+          path: |
+            validation-results/fiji-timing/*.json
+            validation-results/fiji-timing/*.txt

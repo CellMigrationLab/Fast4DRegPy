@@ -19,6 +19,34 @@ The ImageJ path translates whole stacks at once (every plane shares the
 Catmull-Rom weights), so it is faster than a SciPy spline shift and scales with
 `workers`.
 
+## Fast4DRegPy vs Fiji on the published movie
+
+Both ran on the **same GitHub Actions runner** (`ubuntu-latest`, 2 CPUs) on the
+complete published movie (25 x 69 x 416 x 416 uint16) with the same settings:
+max projection, first-frame reference, no averaging, automatic search, Top
+reslice, crop on, 32-bit processing. Fiji is the original
+`time_estimate+apply.ijm` v2.1 in ImageJ 1.53t with the Fast4DReg/NanoJ plugin,
+under Xvfb, with only the headless patches listed in `validation/README.md`
+(`.github/workflows/fiji-full-movie-timing.yml`, run 36154740383):
+
+| | Wall time | Peak memory |
+| --- | ---: | ---: |
+| Fiji Fast4DReg (macro-reported; +3.7 s JVM start) | 41.0 s | 5.0 GB (Java RSS) |
+| Fast4DRegPy, `workers=1` | 19.5 s (10.2 estimate + 9.2 transform) | not recorded in this run* |
+| Fast4DRegPy, `workers=4` | 14.9 s (7.4 + 7.5) | not recorded in this run* |
+
+\*Other runs of the same computation peaked at 4.4 GB (`workers=1`) and
+6.2 GB (`workers=4`) in a 4-CPU container, and at 7.0 GB for the whole
+full-movie validation process. The timing script now records the Python peak
+too.
+
+On this machine Fast4DRegPy is about 2x faster serially and 2.8x faster with
+four transform threads. The two produce the same result: drift tables agree
+within 0.005 px, corrected stacks have Pearson ≥ 0.9999998 and the same
+277 x 354 geometry. Fiji's I/O (it writes and re-reads an intermediate
+XY-corrected TIFF) is included in its time, as it is part of the macro.
+Absolute numbers depend on the machine; the ratio was measured on one runner.
+
 ## Full-size registration
 
 `register_time(..., axes="TZYX", correct_z=True)` on a synthetic uint16 movie

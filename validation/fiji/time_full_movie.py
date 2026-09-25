@@ -22,6 +22,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import argparse
 import json
+import resource
 import shutil
 import subprocess
 import threading
@@ -247,6 +248,10 @@ def main() -> int:
             }
             for w, r in python.items()
         },
+        "fast4dregpy_process_peak_rss_gb": resource.getrusage(
+            resource.RUSAGE_SELF
+        ).ru_maxrss
+        / 1e6,
         "serial_equals_parallel": bool(
             all(np.array_equal(r["shifts"], ours["shifts"]) for r in python.values())
             and all(

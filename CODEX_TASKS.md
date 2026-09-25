@@ -19,7 +19,9 @@ every acceptance criterion. Read `docs/parity_audit.md` first.
     NanoJ time-averaging semantics, `crop_output` / `extend_z`;
   - corrected published ground-truth convention (frame 0 is not drifted);
   - full-movie validation script and manual workflow
-    (`validation/full_movie/`, `docs/full_movie_validation.md`).
+    (`validation/full_movie/`, `docs/full_movie_validation.md`);
+  - archived Fiji settings confirmed by re-running the macro on the full
+    movie, with Fiji and Fast4DRegPy timed on the same runner.
 
 ## P0 — remaining parity work
 
@@ -36,36 +38,27 @@ synthetic macro fixtures. Add a published or Fiji-generated XYZT case with a
 different Z:XY aspect (different axial stretch factor), ideally from the
 HUVEC data in the Zenodo archive, using `validation/fiji/`.
 
-### 3. Recover the archived Fiji settings exactly
-
-The archive does not state the settings used for `2.2.1-LargeDrift_F4DReg.tif`.
-The full-movie validation infers max projection, first-frame reference, no
-averaging, Top reslice and automatic (or large) search; whether Z was
-estimated from the cropped stack cannot be told from the data, and the
-archived crop is 2 px smaller than the published formula. Confirm with the
-authors.
-
 ## P1 — complete the original workflow
 
-### 4. Separate XY and Z estimation settings
+### 3. Separate XY and Z estimation settings
 
 Fiji exposes projection, reference, time averaging and maximum drift
 separately for XY and Z; Fast4DRegPy shares them. In particular the Z search
 radius is in stretched axial pixels. Add separate Z parameters without breaking
 the concise defaults, with macro fixtures for mixed settings.
 
-### 5. Save RAM (16-bit) compatibility mode
+### 4. Save RAM (16-bit) compatibility mode
 
 Fiji's "Save RAM" rounds to the input bit depth after the XY pass and after the
 Z pass. Add an explicit mode only if a use case needs bit-exact 16-bit parity.
 
-### 6. Portable run manifest and saved drift plots
+### 5. Portable run manifest and saved drift plots
 
 Path-independent JSON/CSV manifest with axes, parameters, versions, input
 metadata and drift-table filename. NanoJ `.njt` import/export (the format is a
 zip containing a tab-separated `data.txt`; see `validation/fiji/`).
 
-### 7. Port the synthetic drift/noise generator
+### 6. Port the synthetic drift/noise generator
 
 Deterministic quadratic XYZ drift with an RNG seed, optional drift noise and
 Gaussian/Poisson image noise. Note that `Drift_generator.ijm` never drifts
@@ -73,13 +66,13 @@ frame 0.
 
 ## P2 — usability and larger files
 
-### 8. Preserve OME-TIFF / ImageJ metadata
+### 7. Preserve OME-TIFF / ImageJ metadata
 
 `save_tiff` writes a tifffile-shaped TIFF; it does not write an ImageJ
 hyperstack or voxel sizes. Round-trip axes, voxel sizes, time spacing and
 channel names.
 
-### 9. Batch runner and optional lazy arrays
+### 8. Batch runner and optional lazy arrays
 
 A single direct function or CLI for many files; Dask/Zarr only after the
 in-memory parity suite passes on the same tests.

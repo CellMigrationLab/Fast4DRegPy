@@ -4,9 +4,9 @@
 planes), Fast4DRegPy recovers the XYZ drift actually added to every frame
 within 0.11 px. It agrees with the translations the archived Fiji Fast4DReg
 run applied within 0.005 px, and its corrected volumes match the archived Fiji
-volumes with Pearson ≥ 0.9999993 on every frame. The only discrepancy found is
-the size of the archived output crop, which is 2 px smaller in X and Y than
-Fiji's own crop formula predicts (see "Crop semantics").
+volumes with Pearson ≥ 0.9999993 on every frame. The archived output crop is
+2 px smaller in X and Y than the macro produces; a fresh run of the original
+macro gives the same voxels in a 277 x 354 crop (see "Crop semantics").
 
 Machine-readable results and figures are in
 [`validation/results/large-drift-full-movie/`](../validation/results/large-drift-full-movie/).
@@ -73,8 +73,16 @@ default of 10 cannot have been used. Whether Fiji estimated Z from the cropped
 stack (v1 behaviour; axial stretch 5 instead of 6) **cannot be determined**:
 both give the same Z within 0.002 px.
 
-**Not recoverable:** the macro version (v1 or v2.x) and the exact Fiji build
-beyond "ImageJ 1.53f".
+**Confirmed by re-running Fiji:** the v2.1 macro with these settings and
+"Crop output" on reproduces every archived voxel (100% identical in the common
+region), so they are the settings of the archived result. Fast4DRegPy
+differs from the fresh Fiji drift table by at most 0.0022 / 0.0047 / 0.0039 px
+(Z / Y / X), the same as from the recovered translations. The original macro
+version (v1 or v2.x) remains unknown; v1 and v2.1 with crop on give the same
+result.
+
+**Speed on the same runner:** Fiji 41 s, Fast4DRegPy 19.5 s (`workers=1`) and
+14.9 s (`workers=4`); see `performance.md`.
 
 ## 1. Drift trajectory vs ground truth
 
@@ -232,21 +240,22 @@ height = H - ceil(max dy) + ceil(min dy)      (extrema include 0)
 ```
 
 (`getMinMaxXYFromDriftTable_xy` + `makeRectangle`; identical in the v1 macro
-and in the June 2022 prototypes). With Fiji's own recovered translations
-(max dy = 137.657, min dy = −1.977 at frame 3, max dx = 0, min dx = −62.806)
-this gives **277 x 354 at (138, 0)**. The archive is **275 x 352 at
-(138, 0)**. The origin matches, but the archive is 2 px smaller in both
-dimensions. No macro revision in the Fast4DReg history explains this. For
-352 px, `ceil(min dx)` would have to be −64 (Fiji's largest X translation is
-62.8 px); for 275 px, `ceil(min dy)` would have to be −3. The discrepancy
-therefore does not come from estimation. Possible causes are a manual crop or
-an unpublished macro revision. `fiji_crop_bounds()` implements the published
-formula and is tested against a real Fiji run (`crop_extend` fixture). The
-2 px difference is documented rather than hard-coded.
+and in the June 2022 prototypes). With Fiji's translations (max dy = 137.657,
+min dy = −1.977 at frame 3, max dx = 0, min dx = −62.806) this gives
+**277 x 354 at (138, 0)**. The archive is **275 x 352 at (138, 0)**.
 
-Registration parity and output-cropping parity are therefore reported
-separately: **registration parity** holds at the 0.005 px level; **output
-cropping** matches the published macro, but not this particular archived file.
+A fresh run of the original macro on the same raw file, with the inferred
+settings and "Crop output" on (`.github/workflows/fiji-full-movie-timing.yml`),
+resolves this. It produces a **277 x 354** stack, and over the common
+275 x 352 region its voxels are **100% identical** to the archive after uint16
+conversion. The archived file is therefore this computation with 2 further
+pixels removed from the right and bottom edges, probably trimmed by hand.
+`fiji_crop_bounds()` implements the macro's formula and gives the same
+277 x 354 as the fresh Fiji run; Fast4DRegPy with `crop_output=True` produces
+the same geometry (Pearson ≥ 0.9999998 against the fresh Fiji output).
+
+Registration parity and output-cropping parity therefore both hold against the
+Fiji macro. Only the archived file's extra 2 px trim is not reproduced.
 
 ## Thresholds
 

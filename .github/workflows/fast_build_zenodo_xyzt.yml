@@ -1,0 +1,220 @@
+name: fast-build-zenodo-xyzt-fixture
+
+on:
+  push:
+    branches: [zenodo-xyzt-fixture]
+    paths:
+      - ".github/workflows/fast_build_zenodo_xyzt.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: zenodo-xyzt-fixture
+      - run: python -m pip install --quiet remotezip requests tifffile numpy scikit-image
+      - name: Stream exact ZIP members and build compact fixture
+        run: |
+          python - <<'PY'
+          from remotezip import RemoteZip
+          from pathlib import Path
+          import hashlib, json, struct, zlib, zipfile
+          import requests
+          import numpy as np
+          import tifffile
+          from skimage.feature import match_template
+
+          URL = "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          RAW_MEMBER = "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif"
+          FIJI_MEMBER = "2-Synthetic-drift-dataset/2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif"
+          tmp = Path("/tmp/fast4dregpy-fast")
+          tmp.mkdir(parents=True, exist_ok=True)
+
+          session = requests.Session()
+
+          def get_range(start, end, stream=False):
+              response = session.get(
+                  URL,
+                  headers={"Range": f"bytes={start}-{end}"},
+                  stream=stream,
+                  timeout=(30, 600),
+              )
+              if response.status_code != 206:
+                  raise RuntimeError(
+                      f"Expected HTTP 206 for range {start}-{end}, "
+                      f"got {response.status_code}"
+                  )
+              return response
+
+          def extract_member(info, destination):
+              head = get_range(info.header_offset, info.header_offset + 29).content
+              sig, _, _, _, _, _, _, _, _, name_len, extra_len = struct.unpack(
+                  "<IHHHHHIIIHH", head
+              )
+              if sig != 0x04034B50:
+                  raise RuntimeError("Invalid ZIP local-header signature")
+              data_start = info.header_offset + 30 + name_len + extra_len
+              data_end = data_start + info.compress_size - 1
+              response = get_range(data_start, data_end, stream=True)
+
+              if info.compress_type == zipfile.ZIP_DEFLATED:
+                  decompressor = zlib.decompressobj(-15)
+              elif info.compress_type == zipfile.ZIP_STORED:
+                  decompressor = None
+              else:
+                  raise RuntimeError(f"Unsupported compression: {info.compress_type}")
+
+              written = 0
+              with destination.open("wb") as out:
+                  for chunk in response.iter_content(chunk_size=8 * 1024 * 1024):
+                      if not chunk:
+                          continue
+                      payload = decompressor.decompress(chunk) if decompressor else chunk
+                      out.write(payload)
+                      written += len(payload)
+                  if decompressor:
+                      payload = decompressor.flush()
+                      out.write(payload)
+                      written += len(payload)
+              if written != info.file_size:
+                  raise RuntimeError(
+                      f"Extracted size mismatch for {info.filename}: "
+                      f"{written} != {info.file_size}"
+                  )
+              print(
+                  f"extracted {info.filename}: compressed={info.compress_size} "
+                  f"uncompressed={written}"
+              )
+
+          with RemoteZip(URL) as z:
+              raw_info = z.getinfo(RAW_MEMBER)
+              fiji_info = z.getinfo(FIJI_MEMBER)
+
+          extract_member(raw_info, tmp / "raw.tif")
+          extract_member(fiji_info, tmp / "fiji.tif")
+
+          def read_tzyx(path):
+              with tifffile.TiffFile(path) as tif:
+                  series = tif.series[0]
+                  axes = series.axes
+                  shape = list(series.shape)
+                  dtype = str(series.dtype)
+                  array = series.asarray()
+              if axes != "TZYX":
+                  raise RuntimeError(f"Expected TZYX, got {axes} {shape}")
+              return array, axes, shape, dtype
+
+          raw, raw_axes, raw_shape, raw_dtype = read_tzyx(tmp / "raw.tif")
+          fiji, fiji_axes, fiji_shape, fiji_dtype = read_tzyx(tmp / "fiji.tif")
+          if raw.shape[:2] != fiji.shape[:2]:
+              raise RuntimeError(
+                  f"T/Z mismatch: raw={raw.shape[:2]}, Fiji={fiji.shape[:2]}"
+              )
+
+          time_indices = np.asarray([0, 6], dtype=np.int16)
+          target_size = 160
+          margin = 16
+          raw_size = target_size + 2 * margin
+
+          raw_mip = np.max(raw[0], axis=0).astype(np.float32)
+          fiji_mip = np.max(fiji[0], axis=0).astype(np.float32)
+          match = match_template(raw_mip, fiji_mip, pad_input=False)
+          match_y, match_x = np.unravel_index(np.argmax(match), match.shape)
+          match_score = float(match[match_y, match_x])
+
+          fiji_y0 = (fiji.shape[-2] - target_size) // 2
+          fiji_x0 = (fiji.shape[-1] - target_size) // 2
+          raw_y0 = int(match_y + fiji_y0 - margin)
+          raw_x0 = int(match_x + fiji_x0 - margin)
+          if min(raw_y0, raw_x0) < 0:
+              raise RuntimeError("Mapped raw ROI starts outside source")
+          if raw_y0 + raw_size > raw.shape[-2] or raw_x0 + raw_size > raw.shape[-1]:
+              raise RuntimeError("Mapped raw ROI extends beyond source")
+
+          raw_crop = np.ascontiguousarray(
+              raw[
+                  time_indices,
+                  :,
+                  raw_y0:raw_y0 + raw_size,
+                  raw_x0:raw_x0 + raw_size,
+              ]
+          )
+          fiji_crop = np.ascontiguousarray(
+              fiji[
+                  time_indices,
+                  :,
+                  fiji_y0:fiji_y0 + target_size,
+                  fiji_x0:fiji_x0 + target_size,
+              ]
+          )
+          del raw, fiji
+
+          outdir = Path("tests/data/zenodo_xyzt")
+          outdir.mkdir(parents=True, exist_ok=True)
+          fixture = outdir / "large_drift_xyzt_fiji_reference.npz"
+          np.savez_compressed(
+              fixture,
+              image=raw_crop,
+              fiji_corrected=fiji_crop,
+              time_indices=time_indices,
+              axes=np.asarray("TZYX"),
+              raw_roi_yx=np.asarray([raw_y0, raw_x0, raw_size, raw_size], dtype=np.int16),
+              fiji_roi_yx=np.asarray([fiji_y0, fiji_x0, target_size, target_size], dtype=np.int16),
+              comparison_margin=np.asarray(margin, dtype=np.int16),
+          )
+
+          sha256 = hashlib.sha256(fixture.read_bytes()).hexdigest()
+          manifest = {
+              "fixture": fixture.name,
+              "fixture_sha256": sha256,
+              "source_record": "https://zenodo.org/records/7514913",
+              "requested_archival_record": "https://zenodo.org/records/6534570",
+              "source_doi": "10.5281/zenodo.7514913",
+              "source_archive": "2-Synthetic-drift-dataset.zip",
+              "source_archive_md5": "27e3623f58d23d7c50674edc9432fe1b",
+              "source_member": RAW_MEMBER,
+              "fiji_reference_member": FIJI_MEMBER,
+              "source_shape": raw_shape,
+              "source_axes": raw_axes,
+              "source_dtype": raw_dtype,
+              "fiji_shape": fiji_shape,
+              "fiji_axes": fiji_axes,
+              "fiji_dtype": fiji_dtype,
+              "selected_time_indices": time_indices.tolist(),
+              "frame0_fiji_in_raw_yx": [int(match_y), int(match_x)],
+              "frame0_match_score": match_score,
+              "raw_roi_yx": [raw_y0, raw_x0, raw_size, raw_size],
+              "fiji_roi_yx": [fiji_y0, fiji_x0, target_size, target_size],
+              "comparison_margin": margin,
+              "license": "CC BY 4.0",
+              "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
+              "selected_published_drift_xyz_pixels": [
+                  [-0.1846, -0.842, 0.7736],
+                  [4.83, -2.012, -2.4789]
+              ],
+              "derivation": (
+                  "Frames 0 and 6; complete Z; frame-0 max-Z template matching "
+                  "maps the archived Fiji overlap crop into the raw image; "
+                  "a central 160x160 Fiji ROI and corresponding raw ROI with "
+                  "16-pixel XY margin are stored without resampling or "
+                  "intensity normalization"
+              ),
+          }
+          (outdir / "manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          print(f"fixture={fixture} size={fixture.stat().st_size} sha256={sha256}")
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Commit fixture
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/data/zenodo_xyzt
+          git commit -m "Add Zenodo XYZT Fiji reference fixture"
+          git pull --rebase origin zenodo-xyzt-fixture
+          git push

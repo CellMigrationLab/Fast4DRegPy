@@ -164,10 +164,10 @@ jobs:
               time_indices=time_indices,
               axes=np.asarray("TZYX"),
               raw_roi_yx=np.asarray(
-                  [raw_y0, 0, raw_y_size, raw.shape[-1]], dtype=np.int16
+                  [raw_y0, 0, raw_y_size, raw_shape[-1]], dtype=np.int16
               ),
               fiji_roi_yx=np.asarray(
-                  [fiji_y0, 0, target_y, fiji.shape[-1]], dtype=np.int16
+                  [fiji_y0, 0, target_y, fiji_shape[-1]], dtype=np.int16
               ),
               comparison_y_margin=np.asarray(margin_y, dtype=np.int16),
               comparison_x_start=np.asarray(match_x, dtype=np.int16),

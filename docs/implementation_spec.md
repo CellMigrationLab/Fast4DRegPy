@@ -1,4 +1,4 @@
-# Version 0.4 implementation specification
+# Version 0.4.1 implementation specification
 
 ## Aim
 
@@ -29,8 +29,8 @@ that NanoJ serves in the Fiji implementation.
    worker pool; the default remains one worker.
 6. Project each XY-corrected volume over Y or X to create a `TZX` or `TZY`
    movie.
-7. Symmetrically zero-pad rectangular projections to an even square so
-   NanoPyx does not crop the usually shallow axial projection to its Z size.
+7. Centre-crop rectangular projections to the closest even square before
+   NanoPyx estimation, matching both Fiji Fast4DReg and NanoPyx 2.1.4.
 8. Use the Z component of the NanoPyx projection result as axial translation.
 9. Combine the estimates in `(dz,dy,dx)` order.
 10. Apply the same rigid translation to every channel at a given timepoint.
@@ -70,9 +70,10 @@ preserved as `paper_nrmse` only for reproduction of published analyses.
 ## Known algorithm differences
 
 Fiji rescales the shallow axial reslice bicubically before estimation and then
-rescales the measured Z translation. Version 0.4 instead pads the complete
-axial projection to an even square. This avoids NanoPyx's implicit centre crop,
-but is not yet physically calibrated or numerically proven equivalent to Fiji.
+rescales the measured Z translation. Version 0.4.1 now matches Fiji/NanoPyx
+centre-cropping for rectangular correlation inputs, but it still does not
+reproduce Fiji's physical axial rescaling. Z parity is therefore not yet
+numerically proven.
 
 ## Explicit failure behaviour
 
@@ -83,7 +84,7 @@ but is not yet physically calibrated or numerically proven equivalent to Fiji.
 - Files are never overwritten without `overwrite=True`.
 - Z correction is never inferred from shape; callers must enable it.
 
-## Version 0.4 performance behaviour
+## Version 0.4.1 performance behaviour
 
 - `workers` is validated as a positive integer and is never inferred from the
   machine.
@@ -94,7 +95,7 @@ but is not yet physically calibrated or numerically proven equivalent to Fiji.
 - NanoPyx backend selection remains independent and explicit. Transform worker
   parallelism never changes or retries the estimation backend.
 
-## Version 0.4 exclusions
+## Version 0.4.1 exclusions
 
 There is no true 3D FFT, rotation correction, lazy loading, Zarr, GPU-specific
 code, local elastic channel warping, or automatic dimension inference.

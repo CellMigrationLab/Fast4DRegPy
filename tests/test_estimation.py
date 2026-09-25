@@ -6,6 +6,7 @@ from fast4dreg.estimation import (
     _crop_movie_to_even_square,
     _estimate_sequence_shifts,
     _nanopyx_drift,
+    _scale_axial_projection,
 )
 
 
@@ -23,6 +24,26 @@ def test_even_square_preparation_matches_fiji_center_crop():
     assert cropped.shape == (2, 6, 6)
     np.testing.assert_array_equal(cropped, movie[:, 0:6, 2:8])
 
+
+
+def test_axial_projection_scaling_matches_fiji_shape_rule():
+    movie = np.zeros((2, 9, 52), dtype=np.float32)
+    movie[:, 4, 20] = 1.0
+
+    scaled, factor = _scale_axial_projection(movie)
+
+    assert factor == 6
+    assert scaled.shape == (2, 54, 52)
+    assert scaled.dtype == np.float32
+
+
+def test_axial_projection_scaling_clamps_unusual_aspect_ratio_to_one():
+    movie = np.ones((2, 20, 10), dtype=np.float32)
+
+    scaled, factor = _scale_axial_projection(movie)
+
+    assert factor == 1
+    np.testing.assert_array_equal(scaled, movie)
 
 def test_time_averaging_rejects_trailing_partial_block():
     with pytest.raises(ValueError, match="divide the number of frames exactly"):

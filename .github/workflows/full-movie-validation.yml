@@ -14,9 +14,9 @@ on:
     inputs:
       gate:
         description: "Threshold preset (baseline or strict)"
-        default: baseline
+        default: strict
         type: choice
-        options: [baseline, strict]
+        options: [strict, baseline]
       workers:
         description: "Transform worker threads for the parallel run"
         default: "4"
@@ -41,7 +41,7 @@ jobs:
       - name: Run full-movie validation
         run: >
           python validation/full_movie/validate_large_drift.py
-          --download --gate ${{ inputs.gate || 'baseline' }}
+          --download --gate ${{ inputs.gate || 'strict' }}
           --workers ${{ inputs.workers || '4' }}
       - name: Print machine-readable results
         if: always()

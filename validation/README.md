@@ -50,10 +50,10 @@ python validation/full_movie/validate_large_drift.py --download --workers 4
   `shifts_per_frame.csv`, `fiji_comparison_metrics.csv`, `summary.json`,
   `run_info.json` and PNG diagnostics (`drift_trajectory.png`,
   `fiji_comparison_metrics.png`, `difference_frameNN.png`).
-- Exits non-zero if a gate fails. `--gate baseline` uses the thresholds that
-  predate this validation (0.75 px, Pearson > 0.98); `--gate strict` uses the
-  levels measured on the compact frame-6 fixture (0.1 px vs truth, 0.02 px vs
-  Fiji, Pearson > 0.9999).
+- Exits non-zero if a gate fails. The default `--gate strict` was derived from
+  the first full-movie run: 0.01 px vs Fiji, 3D Pearson > 0.99999 vs Fiji and
+  0.15 px vs ground truth (Fiji itself reaches 0.110 px). `--gate baseline`
+  uses the older thresholds (0.75 px, Pearson > 0.98).
 
 `--self-test` runs the same pipeline on the committed small synthetic movie
 and its real Fiji output. It checks that the tooling works and says nothing

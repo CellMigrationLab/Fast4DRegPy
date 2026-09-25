@@ -30,7 +30,8 @@ What has been validated, and how:
 | **ImageJ interpolation.** `translate` and `Scale` outputs from ImageJ (`tests/test_imagej_parity.py`). | Equal to float32 rounding |
 | **Published ground truth**, compact fixtures (`tests/test_zenodo_*.py`). | XY ≤0.071 px on frames 6/12/18/24; frame-6 XYZ within 0.1 px |
 | **Archived Fiji output**, frame 6 of the published movie. | Given Fiji's translation, 99.99% of voxels are bit-identical after uint16 conversion; Fast4DRegPy's own estimate is within 0.005 px of Fiji and the end-to-end Pearson is 0.9999989 |
-| **Complete published movie**, 25 frames x 69 planes. | See [`docs/full_movie_validation.md`](docs/full_movie_validation.md) |
+| **Complete published movie**, 25 frames x 69 planes (checksum-verified Zenodo data, run in GitHub Actions). | Drift within 0.11 px of the added ground truth on every frame (Fiji: same 0.11 px); within 0.005 px of Fiji's applied translations; corrected volumes Pearson ≥ 0.9999993 and SSIM ≥ 0.9999997 vs archived Fiji on all 25 frames. Report: [`docs/full_movie_validation.md`](docs/full_movie_validation.md) |
+| Archived output crop. | Fiji's published crop formula gives 277 x 354; the archived file is 275 x 352 at the same origin (unexplained; documented) |
 | Channel registration, other voxel geometries, Fiji "Save RAM" mode. | Not yet compared with Fiji |
 
 The audit behind these results, including the defects fixed in 0.5.0, is in

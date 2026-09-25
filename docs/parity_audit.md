@@ -32,14 +32,14 @@ Audit date: 2026-09-25 (supersedes 2026-08-08). Full findings:
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| XY estimation, max/average projection, first/previous reference | Implemented | Fiji-run: <=0.004 px on all macro cases; Archive/Truth: see full-movie report |
-| Z estimation, Top (Y) and Left (X) reslice | Implemented | Fiji-run: <=0.004 px; ImageJ-exact axial stretch |
+| XY estimation, max/average projection, first/previous reference | Implemented | Fiji-run: <=0.004 px on all macro cases; Archive: <=0.005 px from Fiji's applied translations on all 25 frames; Truth: <=0.081 px (Fiji <=0.076 px) |
+| Z estimation, Top (Y) and Left (X) reslice | Implemented | Fiji-run: <=0.004 px; Archive: <=0.0021 px on all 25 frames; Truth: <=0.110 px (Fiji 0.110 px) |
 | Axial stretch factor | `round(width/height)` from pixel geometry, as Fiji | Fiji-run; Fiji does not use voxel calibration |
 | Time averaging, including a trailing partial block | Implemented with NanoJ semantics | Fiji-run: <=0.0015 px (blocks of 3 and 5 of 12 frames) |
 | Bounded search (`max_expected_drift`) | Fiji's centred `2r+1` window; refuses when the peak reaches the window edge | Fiji-run: identical to automatic search inside the bound; Fiji writes NaN/clamps at the edge |
 | Z search bound | In stretched axial pixels (Fiji semantics) | Fiji-run |
-| Final transform | ImageJ bicubic (Catmull-Rom) two-pass, zero fill (default); SciPy spline optional | Fiji-run and Archive: 99.99% of voxels identical given Fiji's translation |
-| Crop output | `crop_output=True`, Fiji rectangle, applied before Z estimation | Fiji-run (crop + extend case) |
+| Final transform | ImageJ bicubic (Catmull-Rom) two-pass, zero fill (default); SciPy spline optional | Fiji-run and Archive: 99.99% of voxels identical given Fiji's translation; full movie Pearson >= 0.9999993 per frame |
+| Crop output | `crop_output=True`, Fiji rectangle, applied before Z estimation | Fiji-run (crop + extend case); the archived movie is cropped 2 px smaller than the formula predicts (unexplained) |
 | Extend stack to fit | `extend_z=True` | Fiji-run |
 | Output dtype | float32 default (Fiji "Save RAM" off); `output_dtype="input"` rounds once | Archive (32-bit then one uint16 conversion) |
 | Save RAM (16-bit per-pass rounding) | Not implemented | — |
@@ -68,6 +68,6 @@ Where a setting is implemented, Fast4DRegPy reproduces the Fiji algorithm,
 not just its outcome: drift tables agree with real Fiji runs to a few
 thousandths of a pixel, and given the same translation the corrected voxels
 are bit-identical after Fiji's uint16 conversion. The published-movie
-comparison is reported separately in `full_movie_validation.md`; channel
-registration and voxel geometries other than the published movie and the
-synthetic fixtures remain untested against Fiji.
+comparison (`full_movie_validation.md`) confirms this on all 25 frames and
+69 planes. Channel registration, Save RAM mode and voxel geometries other than
+the published movie and the synthetic fixtures remain untested against Fiji.

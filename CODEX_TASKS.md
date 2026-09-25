@@ -25,10 +25,9 @@ every acceptance criterion. Read `docs/parity_audit.md` first.
 
 ### 1. Keep the full-movie validation green
 
-Run the **full-movie validation** workflow after any change to estimation or
-transforms. Promote the `strict` gate to the default once it has passed on
-the full movie and the thresholds have been reviewed against
-`docs/full_movie_validation.md`.
+Run the **full-movie validation** workflow (default `strict` gate: 0.01 px vs
+Fiji, Pearson > 0.99999, 0.15 px vs ground truth) after any change to
+estimation, transforms or the NanoPyx pin.
 
 ### 2. Second XYZT reference with different geometry
 
@@ -40,8 +39,11 @@ HUVEC data in the Zenodo archive, using `validation/fiji/`.
 ### 3. Recover the archived Fiji settings exactly
 
 The archive does not state the settings used for `2.2.1-LargeDrift_F4DReg.tif`.
-The full-movie validation infers them (see its report); confirm with the
-authors or with a settings CSV if one exists.
+The full-movie validation infers max projection, first-frame reference, no
+averaging, Top reslice and automatic (or large) search; whether Z was
+estimated from the cropped stack cannot be told from the data, and the
+archived crop is 2 px smaller than the published formula. Confirm with the
+authors.
 
 ## P1 — complete the original workflow
 

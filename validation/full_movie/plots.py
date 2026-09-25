@@ -100,6 +100,7 @@ def metric_series(path: Path, rows: list[dict]) -> None:
         ax.plot(frames, [r[key] for r in rows], color=OURS, lw=2, marker="o", ms=4)
         ax.set_title(title, color=INK, fontsize=9, loc="left")
         ax.set_xlabel("frame", color=INK_2, fontsize=8)
+        ax.ticklabel_format(axis="y", useOffset=False)
     ax = axes[4]
     _style(ax)
     ax.plot(

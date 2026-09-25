@@ -85,11 +85,12 @@ PUBLISHED_SUBSET = {
     24: (62.7437, -137.609, -14.8706),
 }
 # Gates. "baseline" repeats the compact-fixture thresholds that predate this
-# validation; "strict" is the level measured on the compact frame-6 fixture
-# (see docs/full_movie_validation.md) and must be confirmed on the full run.
+# validation. "strict" is derived from the first full-movie run (see
+# docs/full_movie_validation.md): 0.01 px vs Fiji (measured 0.0047), Pearson
+# > 0.99999 (measured 0.9999993), 0.15 px vs ground truth (Fiji itself 0.110).
 GATES = {
     "baseline": {"truth_px": 0.75, "fiji_px": 0.75, "pearson": 0.98},
-    "strict": {"truth_px": 0.1, "fiji_px": 0.02, "pearson": 0.9999},
+    "strict": {"truth_px": 0.15, "fiji_px": 0.01, "pearson": 0.99999},
 }
 REPRESENTATIVE_Z = (17, 34, 51)
 
@@ -745,7 +746,7 @@ def main() -> int:
         help="download the archive from Zenodo if absent",
     )
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--gate", choices=sorted(GATES), default="baseline")
+    parser.add_argument("--gate", choices=sorted(GATES), default="strict")
     parser.add_argument(
         "--ground-truth-csv", type=Path, help="published drift: frame,x,y,z"
     )

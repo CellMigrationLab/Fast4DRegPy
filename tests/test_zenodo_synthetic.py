@@ -34,7 +34,7 @@ def test_zenodo_fixture_checksum_and_provenance():
 def test_published_large_drift_xy_is_recovered_and_corrected():
     with np.load(FIXTURE) as data:
         image = data["image"]
-        time_indices = data["time_indices"].astype(np.float32)
+        time_indices = data["time_indices"].astype(np.int64)
         assert str(data["axes"]) == "TYX"
 
     corrected, shifts = register_time(
@@ -48,19 +48,19 @@ def test_published_large_drift_xy_is_recovered_and_corrected():
         workers=2,
     )
 
-    # Large-drift parameters reported for the published synthetic dataset:
-    # x = 0.1*t^2 + 0.2*t + 0.1*(G - 0.5)
-    # y = -0.03*t^2 + 1.5*t + 0.1*(G - 0.5)
-    # The stored shifts are translations to apply, hence the negative sign.
-    expected_dx = -(0.1 * time_indices**2 + 0.2 * time_indices)
-    expected_dy = -(-0.03 * time_indices**2 + 1.5 * time_indices)
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    published = np.asarray(
+        manifest["selected_published_drift_xyz_pixels"], dtype=np.float32
+    )
+    assert published.shape == (len(time_indices), 3)
+
+    # Fig. S1A reports the actual stochastic drift added to each archived frame.
+    # Fast4DRegPy stores translations to apply relative to the first frame, so
+    # subtract the first published drift and invert the XY signs.
+    expected_dx = -(published[:, 0] - published[0, 0])
+    expected_dy = -(published[:, 1] - published[0, 1])
 
     np.testing.assert_allclose(shifts[:, 0], 0, atol=0)
-    # The published formula is the nominal generator trend, not a saved
-    # ground-truth table for these processed TIFF pixels. The dataset also
-    # includes stochastic drift noise, bicubic image generation, Z drift and
-    # background processing, so projection-based estimates are allowed a
-    # small absolute deviation while retaining the expected trajectory.
     np.testing.assert_allclose(shifts[:, 2], expected_dx, atol=1.5)
     np.testing.assert_allclose(shifts[:, 1], expected_dy, atol=1.5)
 

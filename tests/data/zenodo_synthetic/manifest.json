@@ -23,13 +23,33 @@
     24
   ],
   "derived_operation": "maximum intensity projection over Z; channel 0 if present",
-  "large_drift_parameters": {
-    "x1": 0.2,
-    "x2": 0.1,
-    "y1": 1.5,
-    "y2": -0.03,
-    "z1": -0.6,
-    "z2": 0.0,
-    "drift_noise_amplitude": 0.1
-  }
+  "license": "CC BY 4.0",
+  "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
+  "selected_published_drift_xyz_pixels": [
+    [
+      -0.1846,
+      -0.842,
+      0.7736
+    ],
+    [
+      4.83,
+      -2.012,
+      -2.4789
+    ],
+    [
+      15.5335,
+      -25.244,
+      -7.4236
+    ],
+    [
+      34.7591,
+      -71.216,
+      -10.8287
+    ],
+    [
+      62.7437,
+      -137.609,
+      -14.8706
+    ]
+  ]
 }

@@ -60,7 +60,6 @@ def test_registration_improves_alignment_for_known_xyz_shift():
         reference="first",
         correct_z=True,
         max_expected_drift=8,
-        interpolation_order=1,
         workers=2,
     )
 

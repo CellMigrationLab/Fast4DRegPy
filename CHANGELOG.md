@@ -10,6 +10,10 @@
   setting was previously accepted but ignored.
 - Full-movie validation now fails if reference fitting, commit identification,
   Fiji timing extraction or output-shape comparison is incomplete.
+- `validation/fiji/compare_with_fiji.py` replaces `time_full_movie.py`. It
+  runs Fiji and Fast4DRegPy on any registered Zenodo dataset
+  (`synthetic-large-drift` or `huvec`) and is available as the manual
+  **fiji comparison** workflow.
 
 ## 0.5.0
 

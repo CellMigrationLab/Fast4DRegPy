@@ -28,7 +28,7 @@ additional noisy-image and biological datasets.
 
 The complete archive is large (the current expanded record is tens of
 gigabytes), so it should not be committed to this repository. Automated parity
- tests should instead use a documented, redistribution-safe subset or a small
+tests should instead use a documented, redistribution-safe subset or a small
 fixture derived from the archive, with checksums and provenance recorded.
 
 ## Intended use in the test suite
@@ -67,10 +67,10 @@ is used. The fixture therefore exercises Fast4DRegPy on image pixels derived
 from the published dataset while keeping normal Git/CI use practical.
 
 The regression test compares the estimated lateral translations with the
-large-drift functions reported in the Fast4DReg paper and verifies that
-registration improves frame-to-reference alignment. The published large-drift
-parameters are `x1=0.2`, `x2=0.1`, `y1=1.5`, `y2=-0.03`,
-`z1=-0.6`, `z2=0`, with drift-noise amplitude `A=0.1`.
+published per-frame drift values for the selected frames and verifies that
+registration improves frame-to-reference alignment. These values are stored
+explicitly in the fixture manifest rather than regenerated from nominal
+polynomial coefficients.
 
 This XY projection fixture does **not** establish axial parity. A separate
 XYZT fixture is still needed to validate Fiji's calibrated axial reslice and

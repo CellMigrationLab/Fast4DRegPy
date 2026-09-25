@@ -9,7 +9,7 @@ The data associated with Fast4DReg are archived on Zenodo.
 - Title: **Fast4DRegistration**
 - Version: 1.0
 
-This is the dataset location requested for the Fast4DReg Python repository and
+This is the dataset location requested for the Fast4DRegPy repository and
 should remain documented even if newer versions are published.
 
 Zenodo currently marks this record as having a newer version. The linked

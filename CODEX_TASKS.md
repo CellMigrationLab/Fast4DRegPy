@@ -15,12 +15,15 @@ output views, serial/parallel equality tests, and a reproducible transform
 benchmark. Lazy storage and automatic ROI selection remain deferred because
 they change the execution or estimation model before Fiji parity is established.
 
-### 1. Add Fiji reference fixtures
+### 1. Complete Fiji reference fixtures
 
-Source archive: Zenodo record 6534570 (currently linked to expanded version
-7514913). Select one small redistribution-safe XYT dataset and one small XYZT
-dataset from that archive, then run the current Fiji Fast4DReg on both using
-documented settings.
+A compact XY fixture is now committed from the published Zenodo large-drift
+dataset (record 7514913, archival record 6534570): full-field max-Z projections
+at five timepoints from `2.1.2-LargeDrift_original.tif`. CI checks the
+published lateral drift trend.
+
+Still select one small XYZT fixture and corresponding Fiji Fast4DReg output
+from the archive for axial and pixel-level parity.
 
 Acceptance criteria:
 
@@ -41,7 +44,20 @@ Acceptance criteria:
 - Isotropic and anisotropic synthetic tests recover known subpixel Z shifts.
 - Fiji axial reference tables meet the Task 1 tolerance.
 
-### 3. Verify transform application parity
+### 3. Match bounded drift-window semantics
+
+For `max_expected_drift=r>0`, Fiji crops the CCM to `2r+1` pixels while
+NanoPyx 2.1.4's low-level estimator currently slices `2r`. Implement a
+Fiji-compatible bounded window using NanoPyx correlation primitives, or keep
+the nonzero mode explicitly documented as NanoPyx-specific.
+
+Acceptance criteria:
+
+- `max_expected_drift=0` remains unchanged.
+- Odd-width `2r+1` search windows match Fiji on synthetic translations.
+- Edge cases at the positive and negative search limit are tested.
+
+### 4. Verify transform application parity
 
 Determine Fiji's exact interpolation, boundary, rounding, crop, bit-depth, and
 NaN behaviour and reproduce it as an explicit compatibility mode.
@@ -54,24 +70,24 @@ Acceptance criteria:
 
 ## P1 — complete the original workflow
 
-### 4. Separate XY and Z estimation settings
+### 5. Separate XY and Z estimation settings
 
 Support independent projection, reference, time averaging, and maximum drift
 parameters without breaking the concise defaults.
 
-### 5. Add crop-to-overlap and extend-Z options
+### 6. Add crop-to-overlap and extend-Z options
 
 Implement Fiji-equivalent crop bounds and symmetric Z padding from shift
 extrema. Test positive, negative, fractional, and zero shifts.
 
-### 6. Add a portable run manifest and saved drift plots
+### 7. Add a portable run manifest and saved drift plots
 
 Use a path-independent JSON or CSV manifest containing axes, parameters,
 versions, input metadata, and drift-table filename. Keep the existing simple
 CSV shift table. Add a documented Fiji-settings importer only after fixtures
 from P0 Task 1 exist.
 
-### 7. Port the synthetic drift/noise generator
+### 8. Port the synthetic drift/noise generator
 
 Implement deterministic quadratic XYZ drift with an RNG seed, optional drift
 noise, Gaussian or Poisson image noise, and known ground-truth tables. Do not
@@ -80,17 +96,17 @@ macro.
 
 ## P2 — usability and larger files
 
-### 8. Preserve OME-TIFF metadata
+### 9. Preserve OME-TIFF metadata
 
 Round-trip axes, voxel sizes, time spacing, channel names, and units. Do not
 claim general Bio-Formats support from TIFF-only tests.
 
-### 9. Add a small batch runner
+### 10. Add a small batch runner
 
 Provide one direct function or CLI that applies one configuration to multiple
 files and creates predictable result folders. Avoid a plugin architecture.
 
-### 10. Add optional lazy arrays
+### 11. Add optional lazy arrays
 
 Add Dask/Zarr only after the in-memory P0 parity suite passes. The same core
 registration and validation tests must run against NumPy and lazy inputs.

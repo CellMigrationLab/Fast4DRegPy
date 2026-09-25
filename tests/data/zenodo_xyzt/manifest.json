@@ -49,7 +49,6 @@
   "comparison_x_start": 0,
   "axial_projection_full_lateral_width": 416,
   "axial_projection_z_height": 69,
-  "fiji_geometry_scale_factor": 6,
   "license": "CC BY 4.0",
   "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
   "selected_published_drift_xyz_pixels": [
@@ -64,5 +63,12 @@
       -2.4789
     ]
   ],
-  "derivation": "Frames 0 and 6; complete Z; frame-0 max-Z template matching maps the archived Fiji overlap crop into the raw image; a central 160-pixel-high Fiji ROI with its full X extent and a corresponding raw Y ROI with 16-pixel margin are stored. The raw X dimension remains the full 416 pixels so Fiji axial-estimation geometry is preserved. No resampling or intensity normalization is applied"
+  "derivation": "Frames 0 and 6; complete Z; frame-0 max-Z template matching maps the archived Fiji overlap crop into the raw image; a central 160-pixel-high Fiji ROI with its full X extent and a corresponding raw Y ROI with 16-pixel margin are stored. The raw X dimension remains the full 416 pixels. Because Y is cropped, XY drift estimated from this fixture is NOT Fiji's full-field estimate; tests take XY from the full-field XY fixture. No resampling or intensity normalization is applied",
+  "fiji_frame6_translation_dzdydx": [
+    2.470690877272243,
+    2.0027313468227,
+    -4.885025061645388
+  ],
+  "fiji_frame6_translation_method": "Recovered from the archived Fiji output (not a Fiji drift table): Nelder-Mead fit of the Fiji two-pass ImageJ 1.53t bicubic translation of raw frame 6, rounded once to uint16, to archived Fiji frame 6. At the optimum 99.99% of voxels are identical and the maximum difference is 1 grey level; changing any component by 0.005 px lowers the identical fraction to 37-69%.",
+  "published_drift_convention": "Drift_generator.ijm copies frame 0 unchanged and adds (x,y,z)=published[t] to frame t>=1. The published frame-0 value is generated noise that was never applied. Translation to apply = -published[t] (0 for frame 0). Confirmed by fitting raw frame 6 to a translated raw frame 0: displacement (z,y,x)=(-2.4792,-2.0125,4.8259)."
 }

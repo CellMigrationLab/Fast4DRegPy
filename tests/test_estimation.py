@@ -45,15 +45,18 @@ def test_axial_projection_scaling_clamps_unusual_aspect_ratio_to_one():
     assert factor == 1
     np.testing.assert_array_equal(scaled, movie)
 
-def test_time_averaging_rejects_trailing_partial_block():
-    with pytest.raises(ValueError, match="divide the number of frames exactly"):
-        _nanopyx_drift(
-            _movie(frames=14),
-            reference="first",
-            time_averaging=3,
-            max_expected_drift=0,
-            backend="threaded",
-        )
+def test_time_averaging_keeps_trailing_partial_block_like_fiji():
+    # 14 frames in blocks of 3 give five blocks; Fiji keeps the last partial
+    # block (NanoPyx 2.1.4 would silently drop it).
+    shifts = _nanopyx_drift(
+        _movie(frames=14, shape=(16, 18)),
+        reference="first",
+        time_averaging=3,
+        max_expected_drift=0,
+        backend="threaded",
+    )
+    assert shifts.shape == (14, 2)
+    np.testing.assert_allclose(shifts[0], 0, atol=1e-6)
 
 
 def test_time_estimation_accepts_lowercase_axes(monkeypatch):
@@ -87,12 +90,12 @@ def test_nanopyx_parameters_are_strict(keyword, value, error):
         _nanopyx_drift(_movie(), **options)
 
 
-def test_nanopyx_rejects_parameters_it_would_silently_change():
-    with pytest.raises(ValueError, match="half the number"):
+def test_estimation_rejects_parameters_fiji_would_silently_change():
+    with pytest.raises(ValueError, match="fewer than two averaged blocks"):
         _nanopyx_drift(
             _movie(frames=4),
             reference="first",
-            time_averaging=3,
+            time_averaging=4,
             max_expected_drift=0,
             backend="threaded",
         )
@@ -101,9 +104,25 @@ def test_nanopyx_rejects_parameters_it_would_silently_change():
             _movie(shape=(8, 8)),
             reference="first",
             time_averaging=1,
-            max_expected_drift=4,
+            max_expected_drift=3,
             backend="threaded",
         )
+
+
+def test_bounded_window_is_centred_2r_plus_1_like_fiji():
+    # Fiji crops the correlation map to the centred 2r+1 window, so a +3 px
+    # translation is found exactly with r=5. NanoPyx 2.1.4's own bounded mode
+    # slices an off-centre 2r window and silently returns ~3.53 px here.
+    y, x = np.indices((40, 40), dtype=np.float32)
+    base = np.exp(-((y - 17) ** 2 + (x - 21) ** 2) / 8) + 0.5 * np.exp(
+        -((y - 25) ** 2 + (x - 12) ** 2) / 5
+    )
+    movie = np.stack([base, np.roll(base, -3, axis=1), np.roll(base, 3, axis=0)])
+    options = {"reference": "first", "time_averaging": 1, "backend": "threaded"}
+    automatic = _nanopyx_drift(movie, max_expected_drift=0, **options)
+    bounded = _nanopyx_drift(movie, max_expected_drift=5, **options)
+    np.testing.assert_allclose(automatic, [[0, 0], [0, 3], [-3, 0]], atol=0.01)
+    np.testing.assert_allclose(bounded, automatic, atol=0.01)
 
 
 def test_selected_backend_error_is_not_swallowed(monkeypatch):

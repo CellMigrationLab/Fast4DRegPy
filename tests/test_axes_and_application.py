@@ -44,6 +44,7 @@ def test_apply_time_drift_can_explicitly_preserve_input_dtype():
         image,
         shifts,
         axes="CTZYX",
+        interpolation="scipy",
         interpolation_order=0,
         output_dtype="input",
     )
@@ -58,7 +59,9 @@ def test_apply_channel_shifts_applies_each_shift_to_all_timepoints():
     image = np.zeros((2, 3, 1, 10, 10), dtype=np.uint8)
     image[:, :, 0, 4, 4] = 1
     shifts = np.asarray([[0, 0, 0], [0, -1, 2]], dtype=np.float32)
-    corrected = apply_channel_shifts(image, shifts, axes="CTZYX", interpolation_order=0)
+    corrected = apply_channel_shifts(
+        image, shifts, axes="CTZYX", interpolation="scipy", interpolation_order=0
+    )
 
     assert np.all(corrected[0, :, 0, 4, 4] == 1)
     assert np.all(corrected[1, :, 0, 3, 6] == 1)
@@ -72,6 +75,7 @@ def test_float32_default_avoids_integer_subpixel_quantization():
         image,
         [[0, 0, 0], [0, 0.5, 0]],
         axes="TYX",
+        interpolation="scipy",
         interpolation_order=1,
     )
     assert corrected.dtype == np.float32
@@ -80,24 +84,38 @@ def test_float32_default_avoids_integer_subpixel_quantization():
 
 
 
-def test_default_transform_uses_cubic_interpolation():
+def test_scipy_transform_defaults_to_cubic_spline():
     image = np.zeros((2, 12, 12), dtype=np.float32)
     image[:, 5, 5] = 1
     shifts = np.asarray([[0, 0, 0], [0, 0.5, 0.25]], dtype=np.float32)
 
-    default = apply_drift(image, shifts, axes="TYX")
-    cubic = apply_drift(image, shifts, axes="TYX", interpolation_order=3)
-    linear = apply_drift(image, shifts, axes="TYX", interpolation_order=1)
+    default = apply_drift(image, shifts, axes="TYX", interpolation="scipy")
+    cubic = apply_drift(
+        image, shifts, axes="TYX", interpolation="scipy", interpolation_order=3
+    )
+    linear = apply_drift(
+        image, shifts, axes="TYX", interpolation="scipy", interpolation_order=1
+    )
+    imagej = apply_drift(image, shifts, axes="TYX")
 
     np.testing.assert_allclose(default, cubic, rtol=0, atol=0)
     assert not np.allclose(default, linear)
+    assert not np.allclose(default, imagej)
 
 
 def test_invalid_transform_options_are_rejected_even_for_zero_shifts():
     image = np.ones((2, 8, 8), dtype=np.float32)
     shifts = np.zeros((2, 3), dtype=np.float32)
     with pytest.raises(ValueError, match="between 0 and 5"):
-        apply_drift(image, shifts, axes="TYX", interpolation_order=6)
+        apply_drift(
+            image, shifts, axes="TYX", interpolation="scipy", interpolation_order=6
+        )
+    with pytest.raises(ValueError, match="only to interpolation='scipy'"):
+        apply_drift(image, shifts, axes="TYX", interpolation_order=3)
+    with pytest.raises(ValueError, match="fills uncovered voxels with 0"):
+        apply_drift(image, shifts, axes="TYX", cval=1.0)
+    with pytest.raises(ValueError, match="'imagej' or 'scipy'"):
+        apply_drift(image, shifts, axes="TYX", interpolation="bicubic")
     with pytest.raises(ValueError, match="finite"):
         apply_drift(image, shifts, axes="TYX", cval=np.nan)
     with pytest.raises(ValueError, match="output_dtype"):
@@ -122,10 +140,14 @@ def test_parallel_time_application_matches_serial_result():
         dtype=np.float32,
     )
 
-    serial = apply_drift(image, shifts, axes="CTZYX", workers=1)
-    parallel = apply_drift(image, shifts, axes="CTZYX", workers=4)
-
-    np.testing.assert_array_equal(parallel, serial)
+    for interpolation in ("imagej", "scipy"):
+        serial = apply_drift(
+            image, shifts, axes="CTZYX", interpolation=interpolation, workers=1
+        )
+        parallel = apply_drift(
+            image, shifts, axes="CTZYX", interpolation=interpolation, workers=4
+        )
+        np.testing.assert_array_equal(parallel, serial)
 
 
 def test_parallel_channel_application_matches_serial_result():

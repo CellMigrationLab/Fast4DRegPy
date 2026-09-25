@@ -58,10 +58,11 @@ the patched macro on a virtual display.
 
 Scripts:
 
-- `time_full_movie.py` runs Fiji and Fast4DRegPy on the full movie on the same
-  machine and compares their drift tables, outputs and run times. It is also
-  available as the **fiji full-movie timing** workflow; results are in
-  `results/fiji-full-movie-timing/`.
+- `compare_with_fiji.py --dataset NAME` runs Fiji and Fast4DRegPy with the
+  same settings on a dataset from the Zenodo archive (`synthetic-large-drift`
+  or `huvec`) and compares their drift tables, outputs, the archived Fiji
+  result and run times. It is also available as the **fiji comparison**
+  workflow. Earlier timing results are in `results/fiji-full-movie-timing/`.
 - `make_macro_fixtures.py` regenerates `tests/data/fiji_macro/`, and
   `make_imagej_interpolation_fixture.py` regenerates
   `tests/data/imagej_interpolation/`:

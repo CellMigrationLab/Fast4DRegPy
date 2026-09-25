@@ -1,0 +1,59 @@
+name: fiji comparison
+
+# Runs the original Fast4DReg Fiji macro (v2.1, without a screen under Xvfb)
+# and Fast4DRegPy with the same settings on the same runner, on a dataset
+# from the Fast4DReg Zenodo archive. Compares drift tables, corrected stacks,
+# the archived Fiji result, run time and memory. Manual only.
+on:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: "Dataset"
+        default: huvec
+        type: choice
+        options: [huvec, synthetic-large-drift]
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATASET: ${{ inputs.dataset || 'huvec' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[validation]"
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: java -version && nproc && free -g
+      - name: Fetch the Fast4DReg Fiji sources (commit 0483ace)
+        run: |
+          git clone https://github.com/CellMigrationLab/Fast4DReg ../Fast4DReg
+          git -C ../Fast4DReg checkout 0483ace1ac5b8ee0e3938d00c303104109897803
+      - run: validation/fiji/setup_imagej.sh "$RUNNER_TEMP/ImageJ" ../Fast4DReg
+      - name: Cache the Zenodo archive
+        uses: actions/cache@v4
+        with:
+          path: .validation-data/*.zip
+          key: zenodo-7514913-${{ env.DATASET }}-v1
+      - name: Compare Fiji and Fast4DRegPy
+        env:
+          FIJI_XMX: 13g
+        run: >
+          python validation/fiji/compare_with_fiji.py "$RUNNER_TEMP/ImageJ"
+          "../Fast4DReg/Fast4DReg/macros/time_estimate+apply.ijm"
+          --dataset "$DATASET" --download --workers 4
+          --output-dir "validation-results/fiji-comparison-$DATASET"
+      - if: always()
+        run: cat validation-results/fiji-comparison-*/summary.json validation-results/fiji-comparison-*/per_frame.csv validation-results/fiji-comparison-*/fiji_log.txt || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fiji-comparison-${{ env.DATASET }}
+          path: |
+            validation-results/fiji-comparison-*/*.json
+            validation-results/fiji-comparison-*/*.csv
+            validation-results/fiji-comparison-*/*.txt

@@ -121,7 +121,7 @@ The default strict gate requires:
 - serial and parallel results to be identical.
 
 The repository also has manual **full-movie validation** and
-**fiji full-movie timing** Actions workflows. Details for reproducing the Fiji
+**fiji comparison** Actions workflows. Details for reproducing the Fiji
 run locally are in [validation/README.md](../validation/README.md).
 
 ## Data licence

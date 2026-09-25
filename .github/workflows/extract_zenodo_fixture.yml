@@ -1,0 +1,144 @@
+name: extract-zenodo-xy-fixture
+
+on:
+  push:
+    branches: [zenodo-fixture-inspect]
+    paths:
+      - .github/workflows/extract_zenodo_fixture.yml
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: reaudit-parity-fixes
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet remotezip tifffile numpy
+      - name: Build compact Zenodo fixture
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          from pathlib import Path
+
+          import numpy as np
+          import tifffile
+          from remotezip import RemoteZip
+
+          archive_url = "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          member = (
+              "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/"
+              "2.1.2-LargeDrift_original.tif"
+          )
+          outdir = Path("tests/data/zenodo_synthetic")
+          outdir.mkdir(parents=True, exist_ok=True)
+          source = Path("/tmp/LargeDrift_original.tif")
+
+          with RemoteZip(archive_url) as archive:
+              info = archive.getinfo(member)
+              print("downloading member", member)
+              print("uncompressed bytes", info.file_size, "compressed bytes", info.compress_size)
+              with archive.open(member) as src, source.open("wb") as dst:
+                  shutil.copyfileobj(src, dst, length=8 * 1024 * 1024)
+
+          with tifffile.TiffFile(source) as tif:
+              series = tif.series[0]
+              axes = series.axes.upper()
+              shape = tuple(int(v) for v in series.shape)
+              dtype = str(series.dtype)
+              print("source series", shape, axes, dtype)
+              array = series.asarray()
+
+          # Select channel 0 only if the source is multichannel.
+          current_axes = list(axes)
+          if "C" in current_axes:
+              c = current_axes.index("C")
+              array = np.take(array, 0, axis=c)
+              current_axes.pop(c)
+
+          required = list("TZYX")
+          if set(current_axes) != set(required):
+              raise RuntimeError(
+                  f"Expected TZYX-like synthetic data after channel selection; "
+                  f"found axes={''.join(current_axes)!r}, shape={array.shape}"
+              )
+          permutation = [current_axes.index(a) for a in required]
+          array = np.transpose(array, permutation)
+
+          t_count = array.shape[0]
+          if t_count < 5:
+              raise RuntimeError(f"Expected at least 5 timepoints, found {t_count}")
+          time_indices = np.unique(
+              np.rint(np.linspace(0, t_count - 1, 5)).astype(np.int32)
+          )
+          projections = np.max(array[time_indices], axis=1)
+          fixture_path = outdir / "large_drift_xy_max.npz"
+          np.savez_compressed(
+              fixture_path,
+              image=projections,
+              time_indices=time_indices,
+              axes=np.asarray("TYX"),
+          )
+          sha256 = hashlib.sha256(fixture_path.read_bytes()).hexdigest()
+
+          manifest = {
+              "fixture": fixture_path.name,
+              "fixture_sha256": sha256,
+              "source_record": "https://zenodo.org/records/7514913",
+              "requested_archival_record": "https://zenodo.org/records/6534570",
+              "source_doi": "10.5281/zenodo.7514913",
+              "source_archive": "2-Synthetic-drift-dataset.zip",
+              "source_archive_md5": "27e3623f58d23d7c50674edc9432fe1b",
+              "source_member": member,
+              "source_shape": shape,
+              "source_axes": axes,
+              "source_dtype": dtype,
+              "selected_time_indices": time_indices.tolist(),
+              "derived_operation": "maximum intensity projection over Z; channel 0 if present",
+              "large_drift_parameters": {
+                  "x1": 0.2,
+                  "x2": 0.1,
+                  "y1": 1.5,
+                  "y2": -0.03,
+                  "z1": -0.6,
+                  "z2": 0.0,
+                  "drift_noise_amplitude": 0.1
+              }
+          }
+          (outdir / "manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          (outdir / "README.md").write_text(
+              "# Zenodo synthetic XY fixture\n\n"
+              "This directory contains a compact derivative of the published "
+              "Fast4DReg large-drift synthetic dataset. The source is Zenodo "
+              "record 7514913 (archival record requested for this repository: "
+              "6534570), member `2.1.2-LargeDrift_original.tif` from "
+              "`2-Synthetic-drift-dataset.zip`.\n\n"
+              "The fixture stores full-field maximum-Z projections at five "
+              "timepoints spanning the movie. No spatial cropping, intensity "
+              "normalization, denoising, or resampling is applied. If the source "
+              "contains a channel axis, channel 0 is used. Exact provenance, "
+              "source shape/axes, selected timepoints, published drift parameters, "
+              "and the fixture SHA-256 are recorded in `manifest.json`.\n\n"
+              "Do not replace this fixture with regenerated synthetic images: its "
+              "purpose is to exercise Fast4DRegPy on pixels derived from the "
+              "published Fast4DReg dataset.\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(manifest, indent=2))
+          print("fixture size", fixture_path.stat().st_size)
+          PY
+      - name: Commit fixture to parity branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/data/zenodo_synthetic
+          git diff --cached --stat
+          git commit -m "Add published Zenodo synthetic XY fixture"
+          git push origin HEAD:reaudit-parity-fixes

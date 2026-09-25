@@ -72,6 +72,27 @@ registration improves frame-to-reference alignment. These values are stored
 explicitly in the fixture manifest rather than regenerated from nominal
 polynomial coefficients.
 
-This XY projection fixture does **not** establish axial parity. A separate
-XYZT fixture is still needed to validate Fiji's calibrated axial reslice and
-Z-drift rescaling.
+## XYZT Fiji parity fixture
+
+A second fixture now tests the axial path directly against the archived Fiji
+Fast4DReg output:
+
+- source raw member: `2.1.2-LargeDrift_original.tif`
+- Fiji reference member: `2.2.1-LargeDrift_F4DReg.tif`
+- selected frames: 0 and 6
+- complete Z dimension retained
+- raw X dimension retained at the full 416 pixels so the Fiji axial-geometry
+  scale factor remains 6
+- compact fixture: `tests/data/zenodo_xyzt/large_drift_xyzt_fiji_reference.npz`
+- fixture size: approximately 28.1 MB
+
+The fixture stores the corresponding raw and archived Fiji-corrected volumes,
+with ROI mapping derived from frame-0 maximum-Z template matching. The regression
+test requires all three estimated translation components to match the published
+relative XYZ drift within 0.75 pixels and requires the registered frame to agree
+with the archived Fiji output at Pearson correlation >0.98.
+
+This establishes direct parity evidence for the current axial workflow on one
+published XYZT case. It does not prove universal equivalence for all voxel
+calibrations, interpolation edge cases, time-averaging settings, or bounded
+drift windows.

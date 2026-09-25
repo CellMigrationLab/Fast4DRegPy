@@ -1,0 +1,68 @@
+{
+  "fixture": "large_drift_xyzt_fiji_reference.npz",
+  "fixture_sha256": "3d9e25cdd84a7fc412d03430502b1629520c6484a4780520c62db25ae4a046db",
+  "source_record": "https://zenodo.org/records/7514913",
+  "requested_archival_record": "https://zenodo.org/records/6534570",
+  "source_doi": "10.5281/zenodo.7514913",
+  "source_archive": "2-Synthetic-drift-dataset.zip",
+  "source_archive_md5": "27e3623f58d23d7c50674edc9432fe1b",
+  "source_member": "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif",
+  "fiji_reference_member": "2-Synthetic-drift-dataset/2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif",
+  "source_shape": [
+    25,
+    69,
+    416,
+    416
+  ],
+  "source_axes": "TZYX",
+  "source_dtype": "uint16",
+  "fiji_shape": [
+    25,
+    69,
+    275,
+    352
+  ],
+  "fiji_axes": "TZYX",
+  "fiji_dtype": "uint16",
+  "selected_time_indices": [
+    0,
+    6
+  ],
+  "frame0_fiji_in_raw_yx": [
+    138,
+    0
+  ],
+  "frame0_match_score": 0.9999998807907104,
+  "raw_roi_yx": [
+    179,
+    0,
+    192,
+    416
+  ],
+  "fiji_roi_yx": [
+    57,
+    0,
+    160,
+    352
+  ],
+  "comparison_y_margin": 16,
+  "comparison_x_start": 0,
+  "axial_projection_full_lateral_width": 416,
+  "axial_projection_z_height": 69,
+  "fiji_geometry_scale_factor": 6,
+  "license": "CC BY 4.0",
+  "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
+  "selected_published_drift_xyz_pixels": [
+    [
+      -0.1846,
+      -0.842,
+      0.7736
+    ],
+    [
+      4.83,
+      -2.012,
+      -2.4789
+    ]
+  ],
+  "derivation": "Frames 0 and 6; complete Z; frame-0 max-Z template matching maps the archived Fiji overlap crop into the raw image; a central 160-pixel-high Fiji ROI with its full X extent and a corresponding raw Y ROI with 16-pixel margin are stored. The raw X dimension remains the full 416 pixels so Fiji axial-estimation geometry is preserved. No resampling or intensity normalization is applied"
+}

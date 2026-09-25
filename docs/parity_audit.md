@@ -27,7 +27,7 @@ Audit date: 2026-08-08
 | NanoPyx backend | Explicit CPU backend | `threaded` or `unthreaded` is called directly; LiquidEngine fallback dispatch is bypassed. |
 | Subpixel translation | Implemented | NanoPyx estimation plus SciPy cubic interpolation by default; Fiji uses ImageJ bicubic, so exact pixel parity remains untested. |
 | Sequential XY correction then Z estimation | Implemented | A regression test verifies that the axial projection is generated from the XY-corrected volume. Fiji fixture parity is still required. |
-| Axial reslice scaling | **Partial** | Rectangular correlation inputs now use the same closest-even-square centre crop as Fiji/NanoPyx, but Fiji additionally rescales the shallow axial reslice and rescales the measured Z drift. |
+| Axial reslice scaling | **Validated on one published XYZT case** | The current geometry-derived axial stretch and post-estimation Z rescaling recover the published XYZ displacement within 0.75 pixels and produce corrected pixels with Pearson >0.98 against the archived Fiji Fast4DReg output for frames 0 and 6 of the large-drift dataset. Broader calibration/interpolation parity remains to be tested. |
 | Independent XY/Z settings | Missing | Fiji exposes projection, averaging, reference, and maximum drift separately for XY and Z. |
 | Crop black borders | Missing | Fiji crops using extrema from the XY drift table. |
 | Extend Z stack to fit | Missing | Fiji pads Z using extrema from the Z drift table. |
@@ -46,14 +46,15 @@ Audit date: 2026-08-08
 | Line profiles and kymographs | Implemented | Available as array-returning validation helpers. |
 | Paper SNR definition | Implemented | Mean signal divided by mean background using supplied masks. |
 | Synthetic drift/noise generator | Missing | Original uses quadratic XYZ drift, optional drift noise, background homogenization, and Poisson noise. |
-| Reference regression dataset | **XY fixture implemented** | A 1.18 MB fixture derived directly from `2.1.2-LargeDrift_original.tif` in Zenodo 7514913 stores full-field max-Z projections at frames 0, 6, 12, 18, and 24. CI checks the published lateral drift trend. An XYZT/Fiji-output fixture is still required for axial and pixel-level parity. |
+| Reference regression dataset | **XY + XYZT Fiji fixtures implemented** | The 1.18 MB XY fixture checks the published lateral drift trend. A second ~28.1 MB XYZT fixture uses frames 0 and 6 from the same raw dataset plus the archived `2.2.1-LargeDrift_F4DReg.tif` output to test XYZ shifts and corrected-pixel agreement directly. |
 | True 3D correlation, rotation, shear, scaling | Deliberately deferred | The paper describes translation-only projection registration; current project scope remains projection-only. |
 
 ## Scientific interpretation
 
-Fast4DRegPy is the Python implementation of Fast4DReg, but it is not yet
-numerically verified to reproduce every Fiji implementation detail. Sequential XY-then-Z estimation and the
-paper's validation measurements are implemented. Axial physical scaling,
-transform details, and drift-table parity remain unproven until the P0 Fiji
-fixtures are available. Results intended for publication should therefore be
-checked with `evaluate_registration` and compared with Fiji reference output.
+Fast4DRegPy is the Python implementation of Fast4DReg. Sequential XY-then-Z
+estimation, the paper's validation measurements, and one direct published XYZT
+comparison against archived Fiji Fast4DReg output are now covered by regression
+tests. The current axial path is therefore supported by direct parity evidence
+for that case, but bounded drift-window semantics, broader voxel-calibration
+coverage, interpolation-edge behaviour, cropping/extension, and full drift-table
+compatibility remain open parity tasks.

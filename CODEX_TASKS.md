@@ -15,34 +15,36 @@ output views, serial/parallel equality tests, and a reproducible transform
 benchmark. Lazy storage and automatic ROI selection remain deferred because
 they change the execution or estimation model before Fiji parity is established.
 
-### 1. Complete Fiji reference fixtures
+### 1. Extend Fiji reference fixtures
 
-A compact XY fixture is now committed from the published Zenodo large-drift
-dataset (record 7514913, archival record 6534570): full-field max-Z projections
-at five timepoints from `2.1.2-LargeDrift_original.tif`. CI checks the
-published lateral drift trend.
+Two published-data fixtures are now committed from Zenodo record 7514913
+(archival record 6534570):
 
-Still select one small XYZT fixture and corresponding Fiji Fast4DReg output
-from the archive for axial and pixel-level parity.
+- an XY max-Z fixture spanning five timepoints;
+- an XYZT fixture using frames 0 and 6 together with the archived
+  `2.2.1-LargeDrift_F4DReg.tif` output.
+
+The XYZT regression checks the published relative XYZ displacement within
+0.75 pixels and corrected-pixel agreement with Fiji at Pearson >0.98.
+
+Remaining fixture work:
+
+- add a second XYZT case with different voxel geometry/calibration;
+- record the original Fiji settings/drift tables directly if available;
+- add edge cases for crop/extend-Z and bounded drift windows.
+
+### 2. Broaden axial parity coverage
+
+The current geometry-derived axial stretch / shift-rescaling path now passes
+one direct published Fiji XYZT comparison. Broaden this validation rather than
+treating one dataset as universal proof.
 
 Acceptance criteria:
 
-- Store or reproducibly download the raw input, Fiji XY/Z drift tables,
-  settings CSV, and corrected outputs.
-- Record checksums, Fast4DReg commit/version, Fiji version, and all parameters.
-- Tests compare shift sign, axis order, frame count, and corrected pixels.
-
-### 2. Reproduce Fiji axial reslice scaling
-
-Add a documented physical-pixel-size-aware axial-resampling path equivalent
-to the Fiji macros' bicubic reslice scaling and Z-drift rescaling. The basic
-closest-even-square centre crop already matches Fiji/NanoPyx.
-
-Acceptance criteria:
-
-- API accepts voxel spacing explicitly; it never guesses calibration.
-- Isotropic and anisotropic synthetic tests recover known subpixel Z shifts.
-- Fiji axial reference tables meet the Task 1 tolerance.
+- API can represent explicit voxel spacing where geometry alone is insufficient;
+- isotropic and anisotropic synthetic tests recover known subpixel Z shifts;
+- at least one additional Fiji reference with different Z:XY sampling meets a
+  documented tolerance.
 
 ### 3. Match bounded drift-window semantics
 

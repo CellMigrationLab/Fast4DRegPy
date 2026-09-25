@@ -8,10 +8,10 @@ import time
 from pathlib import Path
 
 import numpy as np
-
-from fast4dreg import apply_drift, estimate_time_drift, fiji_crop_bounds
 from metrics import axis_statistics
 from reference import central_block, fit_translation, locate_fiji_crop
+
+from fast4dreg import apply_drift, estimate_time_drift, fiji_crop_bounds
 
 PUBLISHED_SUBSET = {
     0: (-0.1846, -0.842, 0.7736),

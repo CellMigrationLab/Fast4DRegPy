@@ -4,7 +4,7 @@ Output of `validation/full_movie/validate_large_drift.py` on the published
 synthetic large-drift movie (Zenodo 7514913, `2-Synthetic-drift-dataset.zip`,
 MD5 `27e3623f58d23d7c50674edc9432fe1b`), GitHub Actions run 36151270321 at
 commit `57f6766` (`--gate baseline`; every value also passes the current
-`strict` gate). The figures were transferred through the job log and are
+`strict` gate, confirmed by run 36152160907 at `79bc6f5`). The figures were transferred through the job log and are
 rendered at reduced resolution.
 
 - `shifts_per_frame.csv`: per frame, expected/estimated/error for dz, dy, dx

@@ -5,11 +5,6 @@ name: full-movie validation
 # compares it with the archived Fiji output and the synthetic ground truth.
 # Manual only: it downloads several GB and runs for tens of minutes.
 on:
-  # TEMPORARY: run once on the audit branch to obtain the first full-movie
-  # results; remove before merging (workflow_dispatch needs the file on main).
-  push:
-    branches: [claude/fast4dreg-py-audit-r2p1py]
-    paths: [".github/workflows/full-movie-validation.yml", "validation/full_movie/**"]
   workflow_dispatch:
     inputs:
       gate:

@@ -3,7 +3,7 @@ name: full-movie validation
 # Downloads the published Fast4DReg synthetic dataset (Zenodo record 7514913),
 # verifies its checksum, registers the complete 25-frame, 69-plane movie and
 # compares it with the archived Fiji output and the synthetic ground truth.
-# Manual only: it downloads several GB and runs for tens of minutes.
+# Manual only: it downloads a 1.5 GB archive (cached) and runs for ~20 minutes.
 on:
   workflow_dispatch:
     inputs:

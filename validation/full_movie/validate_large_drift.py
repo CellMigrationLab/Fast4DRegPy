@@ -513,7 +513,40 @@ def validate(movie: Movie, args: argparse.Namespace, output: Path) -> bool:
         expected[0] = 0
         info["ground_truth_source"] = f"published table {args.ground_truth_csv}"
 
-    # 4. Fiji crop semantics from Fiji's own translations.
+    # 4. Settings sweep: which Fiji settings reproduce Fiji's translations?
+    # Estimation only; each variant changes one setting from the principal run.
+    variants = {
+        "principal (max, first, Top, no averaging, auto search)": {},
+        "average projection": {"projection": "mean"},
+        "previous-frame reference": {"reference": "previous"},
+        "Left reslice (axial projection over X)": {"axial_projection_axis": "X"},
+        "crop before Z estimation": {"crop_output": True},
+        "time averaging 2": {"time_averaging": 2},
+    }
+    sweep = {}
+    for label, change in variants.items():
+        options = {
+            "axes": "TZYX",
+            "projection": "max",
+            "reference": "first",
+            "correct_z": True,
+            "axial_projection_axis": "Y",
+            "workers": args.workers,
+            **change,
+        }
+        try:
+            estimate = estimate_time_drift(raw, **options)
+        except ValueError as error:
+            sweep[label] = {"error": str(error)}
+            continue
+        difference = np.abs(estimate - fiji_translation)
+        sweep[label] = {
+            "max_abs_vs_fiji_dzdydx": difference.max(axis=0).tolist(),
+            "mean_abs_vs_fiji_dzdydx": difference.mean(axis=0).tolist(),
+        }
+    info["settings_sweep_vs_fiji"] = sweep
+
+    # 5. Fiji crop semantics from Fiji's own translations.
     fy0, fy1, fx0, fx1 = fiji_crop_bounds(fiji_translation, raw.shape[2], raw.shape[3])
     info["fiji_crop_formula_from_fiji_translations"] = {
         "y0": fy0,

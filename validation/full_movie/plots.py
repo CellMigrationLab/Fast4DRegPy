@@ -82,7 +82,7 @@ def trajectories(path: Path, ours, truth, fiji) -> None:
     axes[0, 0].legend(frameon=False, fontsize=8, labelcolor=INK)
     axes[1, 0].legend(frameon=False, fontsize=8, labelcolor=INK)
     fig.tight_layout()
-    fig.savefig(path, dpi=130)
+    fig.savefig(path, dpi=100)
     plt.close(fig)
 
 
@@ -130,7 +130,7 @@ def metric_series(path: Path, rows: list[dict]) -> None:
     ax.set_xlabel("frame", color=INK_2, fontsize=8)
     ax.legend(frameon=False, fontsize=8, labelcolor=INK)
     fig.tight_layout()
-    fig.savefig(path, dpi=130)
+    fig.savefig(path, dpi=100)
     plt.close(fig)
 
 
@@ -197,7 +197,7 @@ def difference_panels(path: Path, frame: int, raw, fiji, ours, origin) -> None:
         fig.colorbar(handle, ax=axes[row, 4], fraction=0.046)
     fig.suptitle(f"frame {frame}", color=INK, fontsize=11, x=0.01, ha="left")
     fig.tight_layout()
-    fig.savefig(path, dpi=110)
+    fig.savefig(path, dpi=90)
     plt.close(fig)
 
 

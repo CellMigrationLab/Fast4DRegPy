@@ -51,6 +51,11 @@ jobs:
                    validation-results/*/fiji_comparison_metrics.csv; do
             echo "===== $f"; cat "$f" || true
           done
+          # Artifact storage is not reachable from every environment that
+          # reviews these results; also print the figures.
+          for f in validation-results/*/*.png; do
+            echo "===== BASE64 $f"; base64 -w 0 "$f"; echo
+          done
       - if: always()
         uses: actions/upload-artifact@v4
         with:

@@ -59,7 +59,6 @@ def test_registration_improves_alignment_for_known_xyz_shift():
         projection="max",
         reference="first",
         correct_z=True,
-        max_expected_drift=8,
         workers=2,
     )
 
@@ -82,7 +81,6 @@ def test_channel_registration_uses_selected_reference_channel():
         reference_channel=1,
         projection="max",
         correct_z=True,
-        max_expected_drift=8,
         workers=2,
     )
 

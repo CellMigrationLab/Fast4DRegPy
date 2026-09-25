@@ -7,7 +7,6 @@ import resource
 from pathlib import Path
 
 import numpy as np
-
 from metrics import image_metrics, pearson, write_csv
 from scipy.stats import spearmanr
 

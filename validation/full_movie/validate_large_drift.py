@@ -86,7 +86,7 @@ PUBLISHED_SUBSET = {
 }
 # Gates. "baseline" repeats the compact-fixture thresholds that predate this
 # validation. "strict" is derived from the first full-movie run (see
-# docs/full_movie_validation.md): 0.01 px vs Fiji (measured 0.0047), Pearson
+# docs/validation.md): 0.01 px vs Fiji (measured 0.0047), Pearson
 # > 0.99999 (measured 0.9999993), 0.15 px vs ground truth (Fiji itself 0.110).
 GATES = {
     "baseline": {"truth_px": 0.75, "fiji_px": 0.75, "pearson": 0.98},

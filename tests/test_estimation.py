@@ -125,6 +125,26 @@ def test_bounded_window_is_centred_2r_plus_1_like_fiji():
     np.testing.assert_allclose(bounded, automatic, atol=0.01)
 
 
+def test_fiji_compatibility_path_rejects_unthreaded_backend():
+    with pytest.raises(ValueError, match="backend='unthreaded' is not available"):
+        _nanopyx_drift(
+            _movie(frames=6),
+            reference="first",
+            time_averaging=2,
+            max_expected_drift=0,
+            backend="unthreaded",
+        )
+
+    with pytest.raises(ValueError, match="backend='unthreaded' is not available"):
+        _nanopyx_drift(
+            _movie(frames=4, shape=(24, 24)),
+            reference="first",
+            time_averaging=1,
+            max_expected_drift=3,
+            backend="unthreaded",
+        )
+
+
 def test_selected_backend_error_is_not_swallowed(monkeypatch):
     class BrokenEstimator:
         def _run_threaded(self, *args, **kwargs):

@@ -1,5 +1,4 @@
 include AGENTS.md
-include CODEX_TASKS.md
 include CHANGELOG.md
 recursive-include benchmarks *.py
 recursive-include docs *.md

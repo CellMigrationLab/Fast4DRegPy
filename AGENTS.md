@@ -1,54 +1,130 @@
-# Repository instructions
+# Working on Fast4DRegPy
 
-## Purpose
+Fast4DRegPy reimplements the Fiji plugin
+[Fast4DReg](https://github.com/CellMigrationLab/Fast4DReg) in Python, with
+NanoPyx doing the cross-correlation that NanoJ does in Fiji. **Fiji is the
+reference:** a change is correct when it matches what the original Fiji macro
+does, not when it looks more elegant. User documentation:
+`README.md`, `docs/fiji_compatibility.md`, `docs/validation.md`.
 
-This repository is the Python implementation of Fast4DReg. It preserves the
-projection-based Fast4DReg workflow while using the real NanoPyx drift estimator
-in the same architectural role that NanoJ serves in the Fiji implementation.
+## Setup and checks
 
-## Setup and validation
+```bash
+python -m pip install -e ".[dev]"
+python -m ruff check src tests benchmarks validation
+python -m pytest -q          # ~10 s; must pass on Python 3.10–3.13
+```
 
-Install with:
+Run both before finishing any change. NanoPyx (pinned to 2.1.4) is a real
+dependency: never mock it, vendor it or skip tests when it is missing.
 
-    python -m pip install -e ".[test,notebook]"
+After changing estimation, transforms or the NanoPyx pin, also run the
+full-movie comparison (about 20 minutes). Either dispatch the **full-movie
+validation** workflow in GitHub Actions, or run
+`python validation/full_movie/validate_large_drift.py --download` (needs
+access to zenodo.org). It must pass the default `strict` gate: at most
+0.01 px from Fiji, at most 0.15 px from the known drift, correlation with
+Fiji above 0.99999.
 
-Run all tests with:
+## Where things are
 
-    python -m pytest -q
+| Path | Contents |
+| --- | --- |
+| `src/fast4dreg/core.py` | `register_time`, `register_channels` (estimate, then apply) |
+| `src/fast4dreg/estimation.py` | projections, NanoPyx calls, Fiji time averaging and search window, axial stretch |
+| `src/fast4dreg/transform.py` | `apply_drift`, `apply_channel_shifts`, Fiji crop and Z padding |
+| `src/fast4dreg/_imagej.py` | exact NumPy ports of ImageJ `translate` (bicubic) and `resize` |
+| `src/fast4dreg/axes.py` | axis strings, conversion to and from internal `CTZYX` |
+| `src/fast4dreg/io.py` | TIFF and drift-CSV input/output |
+| `src/fast4dreg/validation.py`, `visualization.py` | quality metrics and figures from the paper |
+| `tests/test_fiji_macro_parity.py` | comparisons with output written by the real Fiji macro |
+| `tests/test_imagej_parity.py` | comparisons with real ImageJ interpolation output |
+| `tests/test_zenodo_*.py` | extracts of the published movie and its Fiji result |
+| `validation/` | Fiji runner, fixture generators, full-movie comparison (see `validation/README.md`) |
 
-NanoPyx is a required dependency. Do not mock it, vendor it, or silently skip
-integration tests when it cannot be imported.
+## Conventions that must not change
 
-Run both checks before considering a change complete:
+- Shifts are stored as `(dz, dy, dx)` and are the **translation applied** to
+  each frame, the same quantity as Fiji's drift table (`X-Drift` = `dx`,
+  `Y-Drift` = `dy`, Z table `Y-Drift` = `dz`).
+- Axes are always given explicitly; never infer them from the array shape.
+- XY is estimated and applied before the projection used for Z is made.
+- The same translation is applied to every channel of a timepoint.
+- The default interpolation is ImageJ bicubic, applied per Z plane and then
+  per axial plane, with 0 outside the image. Keep `_imagej.py` bit-compatible
+  with ImageJ; its tests use real ImageJ output.
 
-    python -m ruff check src tests benchmarks
-    python -m pytest -q
+## Things that have caused bugs
 
-## Scientific rules
+- **Ground truth of the published movie.** `Drift_generator.ijm` never moves
+  frame 0, so the translation that corrects frame `t` is `-published[t]`,
+  not `-(published[t] - published[0])`.
+- **Axial stretch.** Fiji stretches the axial projection by
+  `round(lateral / slices)` using ImageJ's `resize`, which scales
+  displacements by exactly that factor. `scipy.ndimage.zoom` does not, and
+  biased Z by 1–4 %. The factor comes from pixel counts, not voxel sizes.
+- **NanoPyx differs from NanoJ.** Its bounded search window is off-centre
+  and its time averaging uses different reference, blocks and
+  interpolation. Fast4DRegPy therefore builds these from NanoPyx's
+  correlation primitives (`_fiji_drift` in `estimation.py`). Do not route
+  these cases back through `DriftEstimator`.
+- **Fiji's own failure modes.** Fiji writes NaN or clipped values when the
+  drift reaches the search limit, and zero drift when averaging leaves one
+  block. Fast4DRegPy raises an error in both cases; keep it that way.
+- **Cropping changes Z.** Fiji crops before measuring Z, so `crop_output`
+  affects estimation, not only the output.
+- **Reproducibility.** NanoPyx uses OpenMP reductions, so estimates vary by
+  ~0.001 px between runs unless `OMP_NUM_THREADS=1`. `workers` never changes
+  results; tests compare serial and parallel output exactly.
+- **Test data that looks convenient but is not equivalent.** The XYZT
+  extract is cropped in Y, so XY drift must come from the full-field extract.
+  Do not replace published or Fiji-generated fixtures with regenerated data.
 
-- Read `docs/fiji_compatibility.md` before changing registration behaviour,
-  and re-run the full-movie validation (`validation/README.md`) afterwards.
-- Take work from `CODEX_TASKS.md` in priority
-  order; do not mark parity tasks complete without their acceptance tests.
-- Preserve explicit axis semantics; never guess stack dimensions.
-- Reject invalid inputs and unsupported settings with descriptive exceptions.
-- Never silently change a setting, select a backend, retry another backend,
-  overwrite a file, or disable an unavailable correction.
-- Store and document translations in `(dz,dy,dx)` order.
-- Estimate and apply XY before constructing the projection used for Z drift.
-- Apply each timepoint translation identically to every channel.
-- Keep transform concurrency explicit through `workers`; never infer a worker
-  count or silently retry failed work.
-- Use asymmetric synthetic images to detect axis swaps and sign errors.
-- Compare numerical behaviour with original Fiji Fast4DReg outputs.
-- Preserve `paper_nrmse` exactly for published-result reproduction and keep it
-  visibly distinct from conventional `standard_nrmse`.
-- Keep algorithm code in `src/fast4dreg`; notebooks only call the public API.
-- Keep the public API direct and explicit. Do not route parameters through
-  `**kwargs`, configuration objects, registries, or plugin factories.
+## Rules
 
-## Scope
+- Reject invalid input or unsupported settings with a clear error. Never
+  silently change a setting, switch or retry a NanoPyx backend, overwrite a
+  file, or skip a requested correction.
+- Every bug fix gets a test that fails without the fix. Use asymmetric test
+  images so axis swaps and sign errors show up.
+- Never loosen a tolerance just to make a test pass; find out why it fails.
+- Keep `workers` explicit (default 1); never pick a worker count
+  automatically.
+- Keep `paper_nrmse` (the paper's formula) separate from `standard_nrmse`.
+- Keep the API plain: explicit keyword arguments, NumPy arrays, no `**kwargs`,
+  configuration objects or plugin systems. Registration code belongs in
+  `src/fast4dreg`; the notebook only calls the public API.
+- Update `CHANGELOG.md` for user-visible changes.
 
-Do not add true 3D correlation, rotations, Dask, Zarr, GPU selection, plugin
-systems, factories, or elaborate notebook styling unless separately approved.
-Prefer small functions and direct NumPy arrays over configurable frameworks.
+## Regenerating Fiji fixtures
+
+The fixtures in `tests/data/fiji_macro/` and
+`tests/data/imagej_interpolation/` come from the real Fiji macro and ImageJ.
+Regenerate them with the scripts in `validation/fiji/`. This needs Java 11+
+and `xvfb-run`; `setup_imagej.sh` builds ImageJ 1.53t with the Fast4DReg
+plugin from Maven Central and the Fast4DReg repository. Keep the macro patch
+limited to what is needed to run without a screen (`patch_macro.py`).
+
+## Open work, in priority order
+
+1. **Second 3D reference.** Validate on data with a different ratio of
+   lateral size to number of slices (a different axial stretch factor), for
+   example the HUVEC data in the Zenodo archive, using `validation/fiji/`.
+2. **Separate XY and Z settings.** Fiji allows projection, reference, time
+   averaging and search radius to differ between XY and Z. Add separate Z
+   parameters without changing the defaults, with Fiji fixtures for mixed
+   settings.
+3. **Fiji "Save RAM" mode**, rounding after the XY step and the Z step, only
+   if bit-exact 16-bit output is needed.
+4. **Drift-table I/O and run records.** Read and write NanoJ `.njt` files (a
+   zip containing a tab-separated `data.txt`; see
+   `validation/fiji/make_macro_fixtures.py`) and save the settings used.
+5. **Synthetic drift generator** with a seed, matching `Drift_generator.ijm`
+   (which never moves frame 0).
+6. **TIFF metadata.** Write ImageJ hyperstacks with voxel sizes and
+   channel names.
+7. **Batch processing** of folders; lazy (Dask/Zarr) arrays only once the same
+   tests pass for them.
+
+Out of scope unless agreed first: true 3D correlation; rotation, scaling or
+non-rigid registration; a GUI or napari plugin; GPU selection.

@@ -1,0 +1,45 @@
+name: inspect-zenodo-synthetic-archive
+
+on:
+  push:
+    branches: [zenodo-xyzt-fixture]
+    paths:
+      - ".github/workflows/inspect_zenodo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: zenodo-xyzt-fixture
+      - name: Download synthetic archive
+        run: |
+          curl -L --fail --retry 3 -o synthetic.zip "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          echo "27e3623f58d23d7c50674edc9432fe1b  synthetic.zip" | md5sum -c -
+      - name: Inventory archive
+        run: |
+          mkdir -p docs
+          {
+            echo "# Zenodo synthetic archive inventory"
+            echo
+            echo "Source: https://zenodo.org/records/7514913"
+            echo "Archive: 2-Synthetic-drift-dataset.zip"
+            echo "MD5: 27e3623f58d23d7c50674edc9432fe1b"
+            echo
+            echo '## Full archive listing'
+            echo '~~~'
+            unzip -l synthetic.zip
+            echo '~~~'
+          } > docs/zenodo_synthetic_archive_inventory.md
+      - name: Commit inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/zenodo_synthetic_archive_inventory.md
+          git commit -m "Inventory Zenodo synthetic archive"
+          git push

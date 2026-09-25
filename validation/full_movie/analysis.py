@@ -114,6 +114,53 @@ def run_worker_comparison(raw: np.ndarray, workers: int) -> tuple[dict, dict]:
     return principal, comparison
 
 
+def _fit_reference_frame(
+    raw: np.ndarray,
+    fiji: np.ndarray,
+    shifts: np.ndarray,
+    *,
+    frame: int,
+    block: tuple[int, int, int],
+    crop_origin: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray, dict]:
+    y0, x0 = crop_origin
+    guess = -shifts[frame].astype(np.float64)
+    center = np.array(raw.shape[1:]) // 2
+    offset = center - np.array(block) // 2
+    offset[1:] = np.clip(
+        offset[1:] + np.rint(guess[1:]).astype(int) // 2,
+        8,
+        np.array(raw.shape[2:]) - np.array(block[1:]) - 8,
+    )
+    raw_slices = tuple(
+        slice(start, start + size)
+        for start, size in zip(offset, block, strict=True)
+    )
+    added, truth_rmse, _ = fit_translation(
+        raw[0],
+        raw[frame][raw_slices],
+        guess,
+        target_offset=tuple(offset),
+        round_uint16=False,
+    )
+
+    fz, fy, fx = central_block(fiji.shape[1:], block)
+    applied, fiji_rmse, exact = fit_translation(
+        raw[frame],
+        fiji[frame][fz, fy, fx],
+        shifts[frame].astype(np.float64),
+        target_offset=(fz.start, fy.start + y0, fx.start + x0),
+        round_uint16=True,
+    )
+    quality = {
+        "frame": frame,
+        "truth_fit_rmse": truth_rmse,
+        "fiji_fit_rmse": fiji_rmse,
+        "fiji_fit_identical_voxel_fraction": exact,
+    }
+    return added, applied, quality
+
+
 def recover_reference_translations(
     raw: np.ndarray,
     fiji: np.ndarray,
@@ -123,7 +170,6 @@ def recover_reference_translations(
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
     """Recover generator and Fiji translations with the ImageJ forward model."""
     frames = raw.shape[0]
-    y0, x0 = crop_origin
     block = (
         max(4, min(20, raw.shape[1] // 3)),
         min(80, fiji.shape[2] // 2),
@@ -134,44 +180,17 @@ def recover_reference_translations(
     fit_quality: list[dict] = []
 
     for frame in range(1, frames):
-        guess = -shifts[frame].astype(np.float64)
-        center = np.array(raw.shape[1:]) // 2
-        offset = center - np.array(block) // 2
-        offset[1:] = np.clip(
-            offset[1:] + np.rint(guess[1:]).astype(int) // 2,
-            8,
-            np.array(raw.shape[2:]) - np.array(block[1:]) - 8,
-        )
-        raw_target = raw[frame][
-            tuple(slice(start, start + size) for start, size in zip(offset, block, strict=True))
-        ]
-        added, truth_rmse, _ = fit_translation(
-            raw[0],
-            raw_target,
-            guess,
-            target_offset=tuple(offset),
-            round_uint16=False,
+        added, applied, quality = _fit_reference_frame(
+            raw,
+            fiji,
+            shifts,
+            frame=frame,
+            block=block,
+            crop_origin=crop_origin,
         )
         truth_added[frame] = added
-
-        fz, fy, fx = central_block(fiji.shape[1:], block)
-        fiji_target = fiji[frame][fz, fy, fx]
-        applied, fiji_rmse, exact = fit_translation(
-            raw[frame],
-            fiji_target,
-            shifts[frame].astype(np.float64),
-            target_offset=(fz.start, fy.start + y0, fx.start + x0),
-            round_uint16=True,
-        )
         fiji_translation[frame] = applied
-        fit_quality.append(
-            {
-                "frame": frame,
-                "truth_fit_rmse": truth_rmse,
-                "fiji_fit_rmse": fiji_rmse,
-                "fiji_fit_identical_voxel_fraction": exact,
-            }
-        )
+        fit_quality.append(quality)
         print(
             f"frame {frame}: truth {-added.round(3)} "
             f"fiji {applied.round(3)} ours {shifts[frame].round(3)}"

@@ -31,6 +31,8 @@ def test_xyzt_fixture_checksum_and_provenance():
     assert manifest["selected_time_indices"] == [0, 6]
     assert manifest["license"] == "CC BY 4.0"
     assert manifest["frame0_match_score"] > 0.999
+    assert manifest["fiji_geometry_scale_factor"] == 6
+    assert manifest["axial_projection_full_lateral_width"] == 416
 
 
 def test_xyzt_registration_matches_published_xyz_and_fiji_reference():
@@ -39,7 +41,8 @@ def test_xyzt_registration_matches_published_xyz_and_fiji_reference():
         image = data["image"]
         fiji_corrected = data["fiji_corrected"]
         axes = str(data["axes"])
-        margin = int(data["comparison_margin"])
+        margin_y = int(data["comparison_y_margin"])
+        x_start = int(data["comparison_x_start"])
 
     corrected, shifts = register_time(
         image,
@@ -64,7 +67,8 @@ def test_xyzt_registration_matches_published_xyz_and_fiji_reference():
 
     # The raw fixture has an XY safety margin around the region corresponding
     # to the archived Fiji overlap crop. Remove that margin after registration.
-    ours = corrected[:, :, margin:-margin, margin:-margin]
+    x_stop = x_start + fiji_corrected.shape[-1]
+    ours = corrected[:, :, margin_y:-margin_y, x_start:x_stop]
     assert ours.shape == fiji_corrected.shape
 
     # Frame 0 validates the geometric mapping between the raw and Fiji crops.
@@ -72,7 +76,7 @@ def test_xyzt_registration_matches_published_xyz_and_fiji_reference():
 
     # Frame 6 is the actual end-to-end XYZ parity check.
     before = _pearson(
-        image[1, :, margin:-margin, margin:-margin],
+        image[1, :, margin_y:-margin_y, x_start:x_stop],
         fiji_corrected[1],
     )
     after = _pearson(ours[1], fiji_corrected[1])

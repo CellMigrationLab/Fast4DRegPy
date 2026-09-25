@@ -1,0 +1,127 @@
+name: build-zenodo-xyzt-fixture
+
+on:
+  push:
+    branches: [zenodo-xyzt-fixture]
+    paths:
+      - ".github/workflows/build_zenodo_xyzt_fixture.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: zenodo-xyzt-fixture
+      - name: Install extraction dependencies
+        run: python -m pip install --quiet remotezip tifffile numpy
+      - name: Extract compact XYZT and Fiji reference fixture
+        run: |
+          python - <<'PY'
+          from remotezip import RemoteZip
+          from pathlib import Path
+          import hashlib
+          import json
+          import shutil
+          import numpy as np
+          import tifffile
+
+          url = "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          raw_member = "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif"
+          fiji_member = "2-Synthetic-drift-dataset/2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif"
+          tmp = Path("/tmp/fast4dregpy-fixture")
+          tmp.mkdir(parents=True, exist_ok=True)
+
+          def extract_member(z, member, destination):
+              with z.open(member) as src, destination.open("wb") as dst:
+                  shutil.copyfileobj(src, dst, length=8 * 1024 * 1024)
+
+          with RemoteZip(url) as z:
+              extract_member(z, raw_member, tmp / "raw.tif")
+              extract_member(z, fiji_member, tmp / "fiji.tif")
+
+          def read_tzyx(path):
+              with tifffile.TiffFile(path) as tif:
+                  series = tif.series[0]
+                  axes = series.axes
+                  shape = list(series.shape)
+                  dtype = str(series.dtype)
+                  array = series.asarray()
+              if axes != "TZYX":
+                  raise RuntimeError(f"Expected TZYX, got {axes} {shape}")
+              return array, axes, shape, dtype
+
+          time_indices = np.asarray([0, 6], dtype=np.int16)
+          crop_size = 160
+
+          raw, raw_axes, raw_shape, raw_dtype = read_tzyx(tmp / "raw.tif")
+          y0 = (raw.shape[-2] - crop_size) // 2
+          x0 = (raw.shape[-1] - crop_size) // 2
+          raw_crop = np.ascontiguousarray(
+              raw[time_indices, :, y0:y0+crop_size, x0:x0+crop_size]
+          )
+          del raw
+
+          fiji, fiji_axes, fiji_shape, fiji_dtype = read_tzyx(tmp / "fiji.tif")
+          if tuple(fiji.shape) != tuple(raw_shape):
+              raise RuntimeError(f"Shape mismatch: raw={raw_shape}, Fiji={fiji.shape}")
+          fiji_crop = np.ascontiguousarray(
+              fiji[time_indices, :, y0:y0+crop_size, x0:x0+crop_size]
+          )
+          del fiji
+
+          outdir = Path("tests/data/zenodo_xyzt")
+          outdir.mkdir(parents=True, exist_ok=True)
+          fixture = outdir / "large_drift_xyzt_fiji_reference.npz"
+          np.savez_compressed(
+              fixture,
+              image=raw_crop,
+              fiji_corrected=fiji_crop,
+              time_indices=time_indices,
+              axes=np.asarray("TZYX"),
+              crop_yx=np.asarray([y0, x0, crop_size, crop_size], dtype=np.int16),
+          )
+
+          sha256 = hashlib.sha256(fixture.read_bytes()).hexdigest()
+          manifest = {
+              "fixture": fixture.name,
+              "fixture_sha256": sha256,
+              "source_record": "https://zenodo.org/records/7514913",
+              "requested_archival_record": "https://zenodo.org/records/6534570",
+              "source_doi": "10.5281/zenodo.7514913",
+              "source_archive": "2-Synthetic-drift-dataset.zip",
+              "source_archive_md5": "27e3623f58d23d7c50674edc9432fe1b",
+              "source_member": raw_member,
+              "fiji_reference_member": fiji_member,
+              "source_shape": raw_shape,
+              "source_axes": raw_axes,
+              "source_dtype": raw_dtype,
+              "fiji_shape": fiji_shape,
+              "fiji_axes": fiji_axes,
+              "fiji_dtype": fiji_dtype,
+              "selected_time_indices": time_indices.tolist(),
+              "crop_yx": [int(y0), int(x0), crop_size, crop_size],
+              "license": "CC BY 4.0",
+              "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
+              "selected_published_drift_xyz_pixels": [
+                  [-0.1846, -0.842, 0.7736],
+                  [4.83, -2.012, -2.4789]
+              ],
+              "derivation": "Frames 0 and 6; complete Z; identical central 160x160 XY crop from raw and archived Fast4DReg-corrected TIFFs; no resampling or intensity normalization"
+          }
+          (outdir / "manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+          )
+          print(f"fixture={fixture} size={fixture.stat().st_size} sha256={sha256}")
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Commit fixture
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/data/zenodo_xyzt
+          git commit -m "Add Zenodo XYZT Fiji reference fixture"
+          git push

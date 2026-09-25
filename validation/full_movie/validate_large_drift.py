@@ -128,30 +128,18 @@ def _reference_data(
     return expected, fiji_translation, crop, details
 
 
-def validate(movie: Movie, args: argparse.Namespace, output: Path) -> bool:
-    _validate_shapes(movie)
-    info = _software_info(movie)
-
-    principal, cropped_shifts, registration_info = _run_registration(
-        movie,
-        args.workers,
-    )
-    info.update(registration_info)
+def _summary(
+    movie: Movie,
+    principal: dict,
+    cropped_shifts: np.ndarray,
+    expected: np.ndarray,
+    fiji_translation: np.ndarray,
+    crop: tuple[int, int, int, int],
+    info: dict,
+    gate: str,
+) -> tuple[dict, list[dict]]:
     shifts = principal["shifts"]
-
-    expected, fiji_translation, crop, reference_info = _reference_data(
-        movie,
-        shifts,
-        args,
-    )
-    info.update(reference_info)
-
-    summary = axis_summaries(
-        shifts,
-        expected,
-        fiji_translation,
-        cropped_shifts,
-    )
+    summary = axis_summaries(shifts, expected, fiji_translation, cropped_shifts)
     metric_rows, distributions = compare_images(
         movie.raw,
         principal["corrected"],
@@ -167,8 +155,62 @@ def validate(movie: Movie, args: argparse.Namespace, output: Path) -> bool:
     summary["gate"] = gate_results(
         summary,
         metric_rows,
-        preset=args.gate,
+        preset=gate,
         serial_parallel_identical=info["serial_parallel_identical"],
+    )
+    return summary, metric_rows
+
+
+def _plots(
+    output: Path,
+    movie: Movie,
+    principal: dict,
+    shifts: np.ndarray,
+    expected: np.ndarray,
+    fiji_translation: np.ndarray,
+    metric_rows: list[dict],
+    crop: tuple[int, int, int, int],
+) -> None:
+    from plots import make_plots
+
+    make_plots(
+        output,
+        movie.raw,
+        movie.fiji,
+        principal["corrected"],
+        shifts,
+        expected,
+        fiji_translation,
+        metric_rows,
+        crop[:2],
+    )
+
+
+def validate(movie: Movie, args: argparse.Namespace, output: Path) -> bool:
+    _validate_shapes(movie)
+    info = _software_info(movie)
+    principal, cropped_shifts, registration_info = _run_registration(
+        movie,
+        args.workers,
+    )
+    info.update(registration_info)
+    shifts = principal["shifts"]
+
+    expected, fiji_translation, crop, reference_info = _reference_data(
+        movie,
+        shifts,
+        args,
+    )
+    info.update(reference_info)
+    summary, metric_rows = _summary(
+        movie,
+        principal,
+        cropped_shifts,
+        expected,
+        fiji_translation,
+        crop,
+        info,
+        args.gate,
     )
 
     write_results(
@@ -178,20 +220,16 @@ def validate(movie: Movie, args: argparse.Namespace, output: Path) -> bool:
         shift_table=(shifts, expected, fiji_translation, cropped_shifts),
         metric_rows=metric_rows,
     )
-
     if not args.no_plots:
-        from plots import make_plots
-
-        make_plots(
+        _plots(
             output,
-            movie.raw,
-            movie.fiji,
-            principal["corrected"],
+            movie,
+            principal,
             shifts,
             expected,
             fiji_translation,
             metric_rows,
-            crop[:2],
+            crop,
         )
 
     checks = summary["gate"]["checks"]

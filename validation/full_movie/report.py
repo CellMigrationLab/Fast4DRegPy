@@ -7,9 +7,9 @@ import resource
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import spearmanr
 
 from metrics import image_metrics, pearson, write_csv
+from scipy.stats import spearmanr
 
 REPRESENTATIVE_Z = (17, 34, 51)
 GATES = {

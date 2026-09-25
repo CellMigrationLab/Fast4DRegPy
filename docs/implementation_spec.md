@@ -31,7 +31,10 @@ that NanoJ serves in the Fiji implementation.
    movie.
 7. Centre-crop rectangular projections to the closest even square before
    NanoPyx estimation, matching both Fiji Fast4DReg and NanoPyx 2.1.4.
-8. Use the Z component of the NanoPyx projection result as axial translation.
+8. For Z correction, stretch the axial projection using the Fiji geometry-derived
+   integer scale factor, estimate drift, and divide the measured axial shift by
+   that factor. This is an implementation approximation because calibrated voxel
+   spacing is not yet part of the public API.
 9. Combine the estimates in `(dz,dy,dx)` order.
 10. Apply the same rigid translation to every channel at a given timepoint.
 
@@ -69,11 +72,11 @@ preserved as `paper_nrmse` only for reproduction of published analyses.
 
 ## Known algorithm differences
 
-Fiji rescales the shallow axial reslice bicubically before estimation and then
-rescales the measured Z translation. Version 0.4.1 now matches Fiji/NanoPyx
-centre-cropping for rectangular correlation inputs, but it still does not
-reproduce Fiji's physical axial rescaling. Z parity is therefore not yet
-numerically proven.
+Version 0.4.1 now matches Fiji/NanoPyx centre-cropping and implements the same
+integer axial stretch / post-estimation shift rescaling pattern. However, this
+path is derived from image geometry rather than explicit physical calibration,
+and SciPy cubic resampling is only an approximation to ImageJ bicubic. Z parity
+therefore remains unproven until an XYZT Fiji reference fixture is added.
 
 ## Explicit failure behaviour
 

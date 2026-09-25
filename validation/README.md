@@ -1,125 +1,70 @@
-# Validation tooling
+# Validation tools
 
-Two independent kinds of evidence back Fast4DRegPy's Fiji parity claims:
+Tools used to compare Fast4DRegPy with Fiji Fast4DReg. Results are summarised
+in [`docs/validation.md`](../docs/validation.md).
 
-1. **The original Fiji macro, run headless** (`validation/fiji/`). The fixtures
-   in `tests/data/fiji_macro/` and `tests/data/imagej_interpolation/` were
-   produced by real ImageJ 1.53t and the Fast4DReg/NanoJ Java plugin, so normal
-   CI checks Fast4DRegPy against Fiji without needing Java.
-2. **The published full movie** (`validation/full_movie/`). The complete
-   25-frame, 69-plane synthetic large-drift movie from Zenodo is registered and
-   compared with the archived Fiji result and with the drift that was actually
-   added to every frame.
-
-Neither is part of the fast PR test suite.
-
-## Full-movie validation
+## Full-movie comparison
 
 ```bash
 python -m pip install -e ".[validation]"
 python validation/full_movie/validate_large_drift.py --download --workers 4
 ```
 
-- Downloads `2-Synthetic-drift-dataset.zip` from Zenodo record **7514913**
-  (the v2.0 version of archival record 6534570) into `.validation-data/`,
-  unless it is already there. The archive must have MD5
-  `27e3623f58d23d7c50674edc9432fe1b`; Zenodo's reported checksum is checked
-  before downloading and the file is checked again afterwards. Another record,
-  version or file is never used.
-- Extracts only `2.1.2-LargeDrift_original.tif` and
-  `2.2.1-LargeDrift_F4DReg.tif`, records their SHA-256, TIFF axes, dtype and
-  ImageJ calibration, and lists every CSV/NJT/TXT member of the archive that
-  could hold Fiji settings or drift tables.
-- Registers all 25 timepoints and 69 Z planes (`max` projections, first-frame
-  reference, no time averaging, automatic search, Top reslice, no crop),
-  once with `workers=1` and once with `--workers`, and checks that the results
-  are bit-identical. `OMP_NUM_THREADS` is pinned to 1 (see below).
-- Recovers the **ground truth** for every frame by fitting ImageJ's two-pass
-  bicubic translation of raw frame 0 to raw frame `t`. This is a forward model
-  of `scripts/Drift_generator.ijm`, which leaves frame 0 untouched. The
-  recovered values are compared with the five published Fig. S1A values
-  committed in the test manifests. A complete published table can be supplied
-  with `--ground-truth-csv frame,x,y,z`.
-- Locates the archived Fiji crop by exact matching of frame 0 (Fiji never moves
-  frame 0) and recovers **Fiji's applied translation for every frame** by
-  fitting the same model to the archived frames. Fiji's crop rectangle is then
-  recomputed from those translations with the macro's own formula.
-- Also estimates the drift with `crop_output=True` to test whether Fiji
-  estimated Z from the cropped stack (the v1 macro always cropped before Z).
-- Writes to `validation-results/large-drift-full-movie/`:
-  `shifts_per_frame.csv`, `fiji_comparison_metrics.csv`, `summary.json`,
-  `run_info.json` and PNG diagnostics (`drift_trajectory.png`,
-  `fiji_comparison_metrics.png`, `difference_frameNN.png`).
-- Exits non-zero if a gate fails. The default `--gate strict` was derived from
-  the first full-movie run: 0.01 px vs Fiji, 3D Pearson > 0.99999 vs Fiji and
-  0.15 px vs ground truth (Fiji itself reaches 0.110 px). `--gate baseline`
-  uses the older thresholds (0.75 px, Pearson > 0.98).
+The script:
 
-`--self-test` runs the same pipeline on the committed small synthetic movie
-and its real Fiji output. It checks that the tooling works and says nothing
-about the published movie; results go to a separate `-SELF-TEST` folder.
+- downloads `2-Synthetic-drift-dataset.zip` from Zenodo record 7514913 into
+  `.validation-data/` and checks its MD5 (`27e3623f58d23d7c50674edc9432fe1b`);
+- registers the full movie with Fast4DRegPy, once with one worker and once
+  with `--workers`, and checks that both give the same result;
+- determines the drift added to each frame, and the translation Fiji applied,
+  by fitting translated copies of the raw frames;
+- compares drift and corrected volumes with the ground truth and the archived
+  Fiji result;
+- writes `shifts_per_frame.csv`, `fiji_comparison_metrics.csv`,
+  `summary.json`, `run_info.json` and figures to
+  `validation-results/large-drift-full-movie/`.
 
-The same run is available as the manually dispatched GitHub workflow
-**full-movie validation** (`.github/workflows/full-movie-validation.yml`),
-which caches the verified archive and uploads the results folder.
+It exits with an error if a threshold is exceeded (`--gate strict`, the
+default: 0.01 px from Fiji, 0.15 px from the ground truth, correlation with
+Fiji above 0.99999; `--gate baseline`: 0.75 px and 0.98). `--self-test` runs
+the same steps on the small stack in `tests/data/fiji_macro/`.
+`OMP_NUM_THREADS` is set to 1 so that results are reproducible.
 
-### Reproducibility note
+The same run is available as the **full-movie validation** workflow in the
+repository's Actions tab. Its first results are in
+`results/large-drift-full-movie/`.
 
-NanoPyx 2.1.4 normalises correlation maps with OpenMP reductions whose
-summation order depends on the thread count. With more than one OpenMP thread,
-repeated runs can differ by 0.001 px (the DriftEstimator rounds to 3 decimals).
-Set `OMP_NUM_THREADS=1` for bit-reproducible estimates. Fast4DRegPy's `workers`
-parameter does not affect this.
-
-## Running the original Fiji macro headless
+## Running the Fiji macro
 
 `validation/fiji/` runs the original `time_estimate+apply.ijm` from the
-Fast4DReg repository. No macro bug was fixed and no registration logic was
-changed. `patch_macro.py` makes only these headless changes:
-
-1. SciJava `#@` dialog parameters become fixed assignments.
-2. The Bio-Formats opener (`Ext.openImagePlus`, `run("Bio-Formats", ...)`)
-   becomes ImageJ's `open()`; the TIFF data are the same.
-3. `run("Collect Garbage")` becomes `call("java.lang.System.gc")`. The menu
-   command blocks forever in headless ImageJ 1.53t; it only frees memory.
-4. Two lines at the end save the Log window to a file.
-5. For the v1 macro only: NanoJ-Core command names map to the equivalent
-   `F4DR ...` commands of the Fast4DReg jar, and `showMessage` becomes
-   `print`.
-
-`run_fiji_macro.sh` runs ImageJ with a GUI on a virtual display (`xvfb-run`),
-because some macro steps (results-table windows) misbehave in `-batch` mode.
-
-### Timing Fiji on the full movie
-
-`setup_imagej.sh` builds the ImageJ installation below. `time_full_movie.py`
-runs the macro on the full movie with the archive's settings, times it,
-times Fast4DRegPy on the same machine, and compares drift tables and outputs.
-It is available as the manual **fiji full-movie timing** workflow; results of
-the first run are in `validation/results/fiji-full-movie-timing/`.
-
-Setup (Java 11+ and `xvfb-run`):
+Fast4DReg repository in ImageJ without a screen. It needs Java 11 or later and
+`xvfb-run`.
 
 ```bash
-# ImageJ 1.53t and the NanoJ dependencies from Maven Central
-M=https://repo1.maven.org/maven2
-mkdir -p ImageJ/plugins lib
-curl -o ImageJ/ij.jar $M/net/imagej/ij/1.53t/ij-1.53t.jar
-for p in com/github/wendykierp/JTransforms/3.1/JTransforms-3.1.jar \
-         pl/edu/icm/JLargeArrays/1.5/JLargeArrays-1.5.jar \
-         org/apache/commons/commons-math3/3.5/commons-math3-3.5.jar \
-         org/apache/commons/commons-compress/1.21/commons-compress-1.21.jar; do
-  curl -o ImageJ/plugins/$(basename $p) $M/$p
-done
-# Compile the Fast4DReg Java plugin from the Fiji repository
 git clone https://github.com/CellMigrationLab/Fast4DReg
-SRC=Fast4DReg/Fast4DReg/jar-files/src/main
-mkdir classes && javac -nowarn -d classes -cp "ImageJ/ij.jar:ImageJ/plugins/*" \
-  $(find $SRC/java -name '*.java')
-cp $SRC/resources/plugins.config classes/ && jar cf ImageJ/plugins/Fast4DReg_.jar -C classes .
+validation/fiji/setup_imagej.sh ImageJ Fast4DReg   # ImageJ 1.53t + Fast4DReg plugin
 ```
 
-Regenerate the committed fixtures:
+`patch_macro.py` changes only what is needed to run without a user:
+
+- the dialog settings become fixed values;
+- the Bio-Formats file opener is replaced by ImageJ's `open()`;
+- `run("Collect Garbage")`, which hangs without a screen, is replaced by a
+  direct garbage-collection call;
+- the log is saved to a file at the end.
+
+The registration steps themselves are not changed. `run_fiji_macro.sh` runs
+the patched macro on a virtual display.
+
+Scripts:
+
+- `time_full_movie.py` runs Fiji and Fast4DRegPy on the full movie on the same
+  machine and compares their drift tables, outputs and run times. It is also
+  available as the **fiji full-movie timing** workflow; results are in
+  `results/fiji-full-movie-timing/`.
+- `make_macro_fixtures.py` regenerates `tests/data/fiji_macro/`, and
+  `make_imagej_interpolation_fixture.py` regenerates
+  `tests/data/imagej_interpolation/`:
 
 ```bash
 python validation/fiji/make_macro_fixtures.py ImageJ \
@@ -128,6 +73,3 @@ python validation/fiji/make_macro_fixtures.py ImageJ \
 python validation/fiji/make_imagej_interpolation_fixture.py ImageJ/ij.jar \
   tests/data/imagej_interpolation/reference.npz
 ```
-
-The fixtures were generated with Fast4DReg commit `0483ace` (macro v2.1) and
-ImageJ 1.53t (`ij.jar` SHA-256 recorded in each fixture).

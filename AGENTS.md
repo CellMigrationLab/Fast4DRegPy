@@ -26,8 +26,9 @@ Run both checks before considering a change complete:
 
 ## Scientific rules
 
-- Read `docs/implementation_spec.md` before changing registration behaviour.
-- Read `docs/parity_audit.md` and take work from `CODEX_TASKS.md` in priority
+- Read `docs/fiji_compatibility.md` before changing registration behaviour,
+  and re-run the full-movie validation (`validation/README.md`) afterwards.
+- Take work from `CODEX_TASKS.md` in priority
   order; do not mark parity tasks complete without their acceptance tests.
 - Preserve explicit axis semantics; never guess stack dimensions.
 - Reject invalid inputs and unsupported settings with descriptive exceptions.

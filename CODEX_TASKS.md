@@ -1,27 +1,8 @@
 # Codex implementation backlog
 
 Work top-to-bottom within each priority. Keep changes small and add tests for
-every acceptance criterion. Read `docs/parity_audit.md` first.
-
-## Completed
-
-- 0.3: sequential XY correction before Z estimation, explicit NanoPyx backend
-  execution without fallback, strict input validation, float32 output,
-  paper-compatible validation helpers.
-- 0.4: explicit bounded parallel transforms, serial/parallel equality tests,
-  transform benchmark.
-- 0.5 (audit 2026-09-25, `docs/audit_2026-09-25.md`):
-  - headless harness running the original Fiji macro (`validation/fiji/`)
-    and committed real-Fiji fixtures for default, previous/average, bounded
-    windows, time averaging with a partial block, Left reslice, crop + extend;
-  - ImageJ-exact axial stretch (fixes a Z scale bias), ImageJ bicubic
-    two-pass transform as the default, Fiji-centred `2r+1` search windows,
-    NanoJ time-averaging semantics, `crop_output` / `extend_z`;
-  - corrected published ground-truth convention (frame 0 is not drifted);
-  - full-movie validation script and manual workflow
-    (`validation/full_movie/`, `docs/full_movie_validation.md`);
-  - archived Fiji settings confirmed by re-running the macro on the full
-    movie, with Fiji and Fast4DRegPy timed on the same runner.
+every acceptance criterion. Read `docs/fiji_compatibility.md` and
+`docs/validation.md` first; completed work is listed in `CHANGELOG.md`.
 
 ## P0 — remaining parity work
 

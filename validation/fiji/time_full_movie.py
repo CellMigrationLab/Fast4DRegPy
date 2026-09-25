@@ -41,7 +41,7 @@ from make_macro_fixtures import FIRST, read_njt  # noqa: E402
 
 from fast4dreg import apply_drift, estimate_time_drift  # noqa: E402
 
-# Settings inferred for the archived result (docs/full_movie_validation.md).
+# Settings of the archived Fiji result (see docs/validation.md).
 SETTINGS = {
     "exp_nro": 1,
     "XY_registration": True,

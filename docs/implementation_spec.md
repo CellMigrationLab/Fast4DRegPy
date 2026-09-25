@@ -80,6 +80,9 @@ numerically proven.
 - Axis order, image values, indices, enums, booleans, integer ranges, shifts,
   interpolation order, and output paths are validated before work begins.
 - NanoPyx settings that NanoPyx 2.1.4 would clamp or ignore are rejected.
+- `max_expected_drift=0` is the parity-safe default. A nonzero bounded
+  search window currently inherits NanoPyx 2.1.4's `2r` slice width rather
+  than Fiji's `2r+1` CCM crop; bounded-window parity remains P0 work.
 - The selected backend is never changed after failure.
 - Files are never overwritten without `overwrite=True`.
 - Z correction is never inferred from shape; callers must enable it.

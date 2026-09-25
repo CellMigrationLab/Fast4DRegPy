@@ -17,7 +17,6 @@ import argparse
 import platform
 from pathlib import Path
 
-import fast4dreg
 import numpy as np
 import tifffile
 from analysis import (
@@ -40,6 +39,8 @@ from report import (
     write_results,
     z_error_correlates,
 )
+
+import fast4dreg
 
 
 def _software_info(movie: Movie) -> dict:

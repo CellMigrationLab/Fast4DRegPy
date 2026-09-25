@@ -116,9 +116,9 @@ jobs:
               )
 
           time_indices = np.asarray([0, 6], dtype=np.int16)
-          target_size = 160
-          margin = 16
-          raw_size = target_size + 2 * margin
+          target_y = 160
+          margin_y = 16
+          raw_y_size = target_y + 2 * margin_y
 
           raw_mip = np.max(raw[0], axis=0).astype(np.float32)
           fiji_mip = np.max(fiji[0], axis=0).astype(np.float32)
@@ -126,29 +126,30 @@ jobs:
           match_y, match_x = np.unravel_index(np.argmax(match), match.shape)
           match_score = float(match[match_y, match_x])
 
-          fiji_y0 = (fiji.shape[-2] - target_size) // 2
-          fiji_x0 = (fiji.shape[-1] - target_size) // 2
-          raw_y0 = int(match_y + fiji_y0 - margin)
-          raw_x0 = int(match_x + fiji_x0 - margin)
-          if min(raw_y0, raw_x0) < 0:
-              raise RuntimeError("Mapped raw ROI starts outside source")
-          if raw_y0 + raw_size > raw.shape[-2] or raw_x0 + raw_size > raw.shape[-1]:
-              raise RuntimeError("Mapped raw ROI extends beyond source")
+          # Keep the complete X dimension in the raw fixture. Fiji derives the
+          # axial stretch factor from lateral-width / Z-height, so cropping X
+          # would change the Z-estimation algorithm itself.
+          fiji_y0 = (fiji.shape[-2] - target_y) // 2
+          raw_y0 = int(match_y + fiji_y0 - margin_y)
+          if raw_y0 < 0 or raw_y0 + raw_y_size > raw.shape[-2]:
+              raise RuntimeError("Mapped raw Y ROI extends beyond source")
+          if match_x < 0 or match_x + fiji.shape[-1] > raw.shape[-1]:
+              raise RuntimeError("Mapped Fiji X extent lies outside source")
 
           raw_crop = np.ascontiguousarray(
               raw[
                   time_indices,
                   :,
-                  raw_y0:raw_y0 + raw_size,
-                  raw_x0:raw_x0 + raw_size,
+                  raw_y0:raw_y0 + raw_y_size,
+                  :,
               ]
           )
           fiji_crop = np.ascontiguousarray(
               fiji[
                   time_indices,
                   :,
-                  fiji_y0:fiji_y0 + target_size,
-                  fiji_x0:fiji_x0 + target_size,
+                  fiji_y0:fiji_y0 + target_y,
+                  :,
               ]
           )
           del raw, fiji
@@ -162,9 +163,14 @@ jobs:
               fiji_corrected=fiji_crop,
               time_indices=time_indices,
               axes=np.asarray("TZYX"),
-              raw_roi_yx=np.asarray([raw_y0, raw_x0, raw_size, raw_size], dtype=np.int16),
-              fiji_roi_yx=np.asarray([fiji_y0, fiji_x0, target_size, target_size], dtype=np.int16),
-              comparison_margin=np.asarray(margin, dtype=np.int16),
+              raw_roi_yx=np.asarray(
+                  [raw_y0, 0, raw_y_size, raw.shape[-1]], dtype=np.int16
+              ),
+              fiji_roi_yx=np.asarray(
+                  [fiji_y0, 0, target_y, fiji.shape[-1]], dtype=np.int16
+              ),
+              comparison_y_margin=np.asarray(margin_y, dtype=np.int16),
+              comparison_x_start=np.asarray(match_x, dtype=np.int16),
           )
 
           sha256 = hashlib.sha256(fixture.read_bytes()).hexdigest()
@@ -187,9 +193,15 @@ jobs:
               "selected_time_indices": time_indices.tolist(),
               "frame0_fiji_in_raw_yx": [int(match_y), int(match_x)],
               "frame0_match_score": match_score,
-              "raw_roi_yx": [raw_y0, raw_x0, raw_size, raw_size],
-              "fiji_roi_yx": [fiji_y0, fiji_x0, target_size, target_size],
-              "comparison_margin": margin,
+              "raw_roi_yx": [raw_y0, 0, raw_y_size, raw_shape[-1]],
+              "fiji_roi_yx": [fiji_y0, 0, target_y, fiji_shape[-1]],
+              "comparison_y_margin": margin_y,
+              "comparison_x_start": int(match_x),
+              "axial_projection_full_lateral_width": int(raw_shape[-1]),
+              "axial_projection_z_height": int(raw_shape[1]),
+              "fiji_geometry_scale_factor": int(
+                  np.floor(raw_shape[-1] / raw_shape[1] + 0.5)
+              ),
               "license": "CC BY 4.0",
               "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
               "selected_published_drift_xyz_pixels": [
@@ -199,9 +211,11 @@ jobs:
               "derivation": (
                   "Frames 0 and 6; complete Z; frame-0 max-Z template matching "
                   "maps the archived Fiji overlap crop into the raw image; "
-                  "a central 160x160 Fiji ROI and corresponding raw ROI with "
-                  "16-pixel XY margin are stored without resampling or "
-                  "intensity normalization"
+                  "a central 160-pixel-high Fiji ROI with its full X extent "
+                  "and a corresponding raw Y ROI with 16-pixel margin are "
+                  "stored. The raw X dimension remains the full 416 pixels so "
+                  "Fiji axial-estimation geometry is preserved. No resampling "
+                  "or intensity normalization is applied"
               ),
           }
           (outdir / "manifest.json").write_text(

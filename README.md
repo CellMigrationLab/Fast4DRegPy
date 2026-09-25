@@ -36,9 +36,14 @@ The Fast4DReg datasets and reference outputs are archived on Zenodo:
   https://zenodo.org/records/7514913
 
 The archive contains synthetic-drift data, HUVEC data, channel-alignment data,
-expected/reference outputs, and the original software archive. These data are
-the preferred source for future Fiji-versus-Python regression fixtures; the
-full multi-gigabyte archive is not vendored in this repository. See
+expected/reference outputs, and the original software archive. The full
+multi-gigabyte archive is not vendored in this repository. Instead,
+`tests/data/zenodo_synthetic/large_drift_xy_max.npz` is a 1.18 MB derivative
+fixture made directly from the published
+`2.1.2-LargeDrift_original.tif`: full-field maximum-Z projections at frames
+0, 6, 12, 18, and 24. Its source member, archive checksum, extraction operation,
+selected timepoints, and fixture SHA-256 are recorded in
+`tests/data/zenodo_synthetic/manifest.json`. See
 [`docs/data.md`](docs/data.md).
 
 ## Supported inputs
@@ -111,6 +116,12 @@ When `time_averaging > 1`, the frame count must currently be exactly divisible
 by the averaging factor. NanoPyx 2.1.4 otherwise drops the trailing partial
 block, while Fiji Fast4DReg retains it; Fiji-compatible partial-block averaging
 remains a parity task.
+
+For strict Fiji parity, leave `max_expected_drift=0` (automatic search) for
+now. Fiji crops a bounded cross-correlation search radius `r` to `2r+1`
+pixels, whereas NanoPyx 2.1.4's low-level estimator currently slices `2r`
+pixels after testing the `2r+1` condition. The automatic mode is unaffected;
+bounded-window parity is tracked as a P0 issue.
 
 `workers` controls how many independent volumes are transformed concurrently.
 It defaults to `1`, so library calls never choose a concurrency level silently.
@@ -195,8 +206,10 @@ python -m ruff check src tests benchmarks
 python -m pytest -q
 ```
 
-The integration tests call NanoPyx 2.1.4 on known XYZ translations. They must
-not be mocked or silently skipped when NanoPyx is unavailable.
+The integration tests call NanoPyx 2.1.4 on known XYZ translations and on a
+compact fixture derived directly from the published Fast4DReg large-drift
+Zenodo dataset. They must not be mocked or silently skipped when NanoPyx is
+unavailable.
 
 All save functions refuse to overwrite existing files by default. Pass
 `overwrite=True` deliberately when replacement is intended.

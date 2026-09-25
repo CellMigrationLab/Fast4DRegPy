@@ -3,115 +3,84 @@
 Work top-to-bottom within each priority. Keep changes small and add tests for
 every acceptance criterion. Read `docs/parity_audit.md` first.
 
-## P0 — establish scientific parity
+## Completed
 
-Completed in version 0.3: sequential XY correction before Z estimation,
-explicit NanoPyx backend execution without fallback, strict input validation,
-float32 transform output by default, and paper-compatible validation helpers.
+- 0.3: sequential XY correction before Z estimation, explicit NanoPyx backend
+  execution without fallback, strict input validation, float32 output,
+  paper-compatible validation helpers.
+- 0.4: explicit bounded parallel transforms, serial/parallel equality tests,
+  transform benchmark.
+- 0.5 (audit 2026-09-25, `docs/audit_2026-09-25.md`):
+  - headless harness running the original Fiji macro (`validation/fiji/`)
+    and committed real-Fiji fixtures for default, previous/average, bounded
+    windows, time averaging with a partial block, Left reslice, crop + extend;
+  - ImageJ-exact axial stretch (fixes a Z scale bias), ImageJ bicubic
+    two-pass transform as the default, Fiji-centred `2r+1` search windows,
+    NanoJ time-averaging semantics, `crop_output` / `extend_z`;
+  - corrected published ground-truth convention (frame 0 is not drifted);
+  - full-movie validation script and manual workflow
+    (`validation/full_movie/`, `docs/full_movie_validation.md`).
 
-Completed in version 0.4: explicit bounded parallel volume transformations,
-parallel XY preparation for Z estimation, direct writes into preallocated
-output views, serial/parallel equality tests, and a reproducible transform
-benchmark. Lazy storage and automatic ROI selection remain deferred because
-they change the execution or estimation model before Fiji parity is established.
+## P0 — remaining parity work
 
-### 1. Extend Fiji reference fixtures
+### 1. Keep the full-movie validation green
 
-Two published-data fixtures are now committed from Zenodo record 7514913
-(archival record 6534570):
+Run the **full-movie validation** workflow after any change to estimation or
+transforms. Promote the `strict` gate to the default once it has passed on
+the full movie and the thresholds have been reviewed against
+`docs/full_movie_validation.md`.
 
-- an XY max-Z fixture spanning five timepoints;
-- an XYZT fixture using frames 0 and 6 together with the archived
-  `2.2.1-LargeDrift_F4DReg.tif` output.
+### 2. Second XYZT reference with different geometry
 
-The XYZT regression checks the published relative XYZ displacement within
-0.75 pixels and corrected-pixel agreement with Fiji at Pearson >0.98.
+The Fiji comparisons cover one published dataset (69 slices, 416 px) and the
+synthetic macro fixtures. Add a published or Fiji-generated XYZT case with a
+different Z:XY aspect (different axial stretch factor), ideally from the
+HUVEC data in the Zenodo archive, using `validation/fiji/`.
 
-Remaining fixture work:
+### 3. Recover the archived Fiji settings exactly
 
-- add a second XYZT case with different voxel geometry/calibration;
-- record the original Fiji settings/drift tables directly if available;
-- add edge cases for crop/extend-Z and bounded drift windows.
-
-### 2. Broaden axial parity coverage
-
-The current geometry-derived axial stretch / shift-rescaling path now passes
-one direct published Fiji XYZT comparison. Broaden this validation rather than
-treating one dataset as universal proof.
-
-Acceptance criteria:
-
-- API can represent explicit voxel spacing where geometry alone is insufficient;
-- isotropic and anisotropic synthetic tests recover known subpixel Z shifts;
-- at least one additional Fiji reference with different Z:XY sampling meets a
-  documented tolerance.
-
-### 3. Match bounded drift-window semantics
-
-For `max_expected_drift=r>0`, Fiji crops the CCM to `2r+1` pixels while
-NanoPyx 2.1.4's low-level estimator currently slices `2r`. Implement a
-Fiji-compatible bounded window using NanoPyx correlation primitives, or keep
-the nonzero mode explicitly documented as NanoPyx-specific.
-
-Acceptance criteria:
-
-- `max_expected_drift=0` remains unchanged.
-- Odd-width `2r+1` search windows match Fiji on synthetic translations.
-- Edge cases at the positive and negative search limit are tested.
-
-### 4. Verify transform application parity
-
-Determine Fiji's exact interpolation, boundary, rounding, crop, bit-depth, and
-NaN behaviour and reproduce it as an explicit compatibility mode.
-
-Acceptance criteria:
-
-- Integer and subpixel XYZ fixture outputs match Fiji within documented error.
-- Default dtype behaviour is documented and tested for uint8, uint16, and
-  float32.
+The archive does not state the settings used for `2.2.1-LargeDrift_F4DReg.tif`.
+The full-movie validation infers them (see its report); confirm with the
+authors or with a settings CSV if one exists.
 
 ## P1 — complete the original workflow
 
-### 5. Separate XY and Z estimation settings
+### 4. Separate XY and Z estimation settings
 
-Support independent projection, reference, time averaging, and maximum drift
-parameters without breaking the concise defaults.
+Fiji exposes projection, reference, time averaging and maximum drift
+separately for XY and Z; Fast4DRegPy shares them. In particular the Z search
+radius is in stretched axial pixels. Add separate Z parameters without breaking
+the concise defaults, with macro fixtures for mixed settings.
 
-### 6. Add crop-to-overlap and extend-Z options
+### 5. Save RAM (16-bit) compatibility mode
 
-Implement Fiji-equivalent crop bounds and symmetric Z padding from shift
-extrema. Test positive, negative, fractional, and zero shifts.
+Fiji's "Save RAM" rounds to the input bit depth after the XY pass and after the
+Z pass. Add an explicit mode only if a use case needs bit-exact 16-bit parity.
 
-### 7. Add a portable run manifest and saved drift plots
+### 6. Portable run manifest and saved drift plots
 
-Use a path-independent JSON or CSV manifest containing axes, parameters,
-versions, input metadata, and drift-table filename. Keep the existing simple
-CSV shift table. Add a documented Fiji-settings importer only after fixtures
-from P0 Task 1 exist.
+Path-independent JSON/CSV manifest with axes, parameters, versions, input
+metadata and drift-table filename. NanoJ `.njt` import/export (the format is a
+zip containing a tab-separated `data.txt`; see `validation/fiji/`).
 
-### 8. Port the synthetic drift/noise generator
+### 7. Port the synthetic drift/noise generator
 
-Implement deterministic quadratic XYZ drift with an RNG seed, optional drift
-noise, Gaussian or Poisson image noise, and known ground-truth tables. Do not
-hard-code the acquisition-specific 0.101/0.400 µm voxel sizes from the Fiji
-macro.
+Deterministic quadratic XYZ drift with an RNG seed, optional drift noise and
+Gaussian/Poisson image noise. Note that `Drift_generator.ijm` never drifts
+frame 0.
 
 ## P2 — usability and larger files
 
-### 9. Preserve OME-TIFF metadata
+### 8. Preserve OME-TIFF / ImageJ metadata
 
-Round-trip axes, voxel sizes, time spacing, channel names, and units. Do not
-claim general Bio-Formats support from TIFF-only tests.
+`save_tiff` writes a tifffile-shaped TIFF; it does not write an ImageJ
+hyperstack or voxel sizes. Round-trip axes, voxel sizes, time spacing and
+channel names.
 
-### 10. Add a small batch runner
+### 9. Batch runner and optional lazy arrays
 
-Provide one direct function or CLI that applies one configuration to multiple
-files and creates predictable result folders. Avoid a plugin architecture.
-
-### 11. Add optional lazy arrays
-
-Add Dask/Zarr only after the in-memory P0 parity suite passes. The same core
-registration and validation tests must run against NumPy and lazy inputs.
+A single direct function or CLI for many files; Dask/Zarr only after the
+in-memory parity suite passes on the same tests.
 
 ## Deferred by current project scope
 
@@ -119,6 +88,3 @@ registration and validation tests must run against NumPy and lazy inputs.
 - Rotation, scaling, shear, or non-rigid transforms.
 - Napari or desktop GUI.
 - GPU-selection framework.
-
-These may be proposed later, but must not be mixed into parity work for the
-Fast4DRegPy parity work.

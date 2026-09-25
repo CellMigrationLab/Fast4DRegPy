@@ -1,5 +1,9 @@
 # Full code audit — 2026-08-08
 
+> **Superseded (2026-09-25):** see [`audit_2026-09-25.md`](audit_2026-09-25.md).
+> Several conclusions below (Z parity, ground-truth convention, bounded windows,
+> time averaging, interpolation) were revised by that audit.
+
 ## Scope
 
 This audit treated version 0.2.0 as untrusted. It reviewed every maintained

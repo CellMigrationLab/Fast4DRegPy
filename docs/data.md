@@ -2,97 +2,90 @@
 
 The data associated with Fast4DReg are archived on Zenodo.
 
-## Requested archival record
+## Records
 
-- Zenodo: <https://zenodo.org/records/6534570>
-- DOI: <https://doi.org/10.5281/zenodo.6534570>
-- Title: **Fast4DRegistration**
-- Version: 1.0
+- Requested archival record (v1.0): <https://zenodo.org/records/6534570>,
+  DOI <https://doi.org/10.5281/zenodo.6534570>, title **Fast4DRegistration**.
+- Zenodo links it to the expanded v2.0 record:
+  <https://zenodo.org/records/7514913>, DOI
+  <https://doi.org/10.5281/zenodo.7514913>. All fixtures and the full-movie
+  validation use this record.
 
-This is the dataset location requested for the Fast4DRegPy repository and
-should remain documented even if newer versions are published.
+The archive (CC BY 4.0) contains synthetic-drift data, HUVEC data,
+channel-alignment data, expected Fiji outputs and the original software. It is
+tens of gigabytes and is not vendored here.
 
-Zenodo currently marks this record as having a newer version. The linked
-version 2.0 record is:
+## The synthetic large-drift movie
 
-- Zenodo: <https://zenodo.org/records/7514913>
-- DOI: <https://doi.org/10.5281/zenodo.7514913>
+Archive `2-Synthetic-drift-dataset.zip` (MD5
+`27e3623f58d23d7c50674edc9432fe1b`):
 
-## Contents relevant to this implementation
+| Member | Content |
+| --- | --- |
+| `2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif` | raw movie, `TZYX` 25 x 69 x 416 x 416, uint16, Z spacing 0.5 in the ImageJ metadata |
+| `2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif` | archived Fiji Fast4DReg output, `TZYX` 25 x 69 x 275 x 352, uint16 |
 
-The archive provides the material needed to validate the Python implementation
-against the published Fast4DReg workflow, including synthetic drift data,
-biological time-series data, channel-alignment examples, reference/expected
-outputs, videos, and the original software archive. Version 2.0 also contains
-additional noisy-image and biological datasets.
+`validation/full_movie/validate_large_drift.py` re-reads and records the exact
+shapes, axes, dtypes and calibration of both files on every run
+(`run_info.json`).
 
-The complete archive is large (the current expanded record is tens of
-gigabytes), so it should not be committed to this repository. Automated parity
-tests should instead use a documented, redistribution-safe subset or a small
-fixture derived from the archive, with checksums and provenance recorded.
+### Ground-truth convention
 
-## Intended use in the test suite
+`scripts/Drift_generator.ijm` duplicates the original volume as frame 0 and
+then translates frames `t = 1..T-1` by the drift it generated (quadratic trend
+plus Gaussian noise). **Frame 0 is never translated.** The table reported in
+Fig. S1A (and Pylvänäinen's thesis, Table 7) also lists a value for frame 0,
+which is the noise drawn for `t = 0` and was never applied.
 
-The parity fixture should record:
+The translation Fast4DRegPy (and Fiji) should apply to frame `t` is therefore
 
-1. the exact Zenodo record and source filename;
-2. the checksum of every extracted input fixture;
-3. the Fiji/Fast4DReg version or commit used to generate reference results;
-4. all XY and Z registration settings;
-5. the reference drift tables and corrected outputs;
-6. numerical tolerances used for the Python comparison.
+```
+(dz, dy, dx) = (-z[t], -y[t], -x[t])  for t >= 1,   (0, 0, 0) for t = 0
+```
 
-This is particularly important for Z registration because the Fiji workflow
-rescales the axial reslice before drift estimation and rescales the measured
-Z drift afterward. That behavior is not yet reproduced exactly by version
-0.4.0 of the Python implementation.
+This was verified directly: fitting a translated copy of raw frame 0 to raw
+frame 6 gives an added displacement of (z, y, x) = (-2.4792, -2.0125, 4.8259),
+matching the published frame-6 value (-2.4789, -2.012, 4.83). Earlier versions
+of the tests subtracted the frame-0 value, which is wrong by up to 0.84 px.
 
+Only five published values (frames 0, 6, 12, 18, 24) are available in
+machine-readable form in this repository. The full-movie validation recovers
+the added displacement of all 25 frames by the same forward fit and checks it
+against those five values.
 
-## Committed regression fixture
+### How the archived Fiji output was produced
 
-The repository contains a compact fixture derived directly from the published
-large-drift synthetic dataset:
+Established from the data and the macro source:
 
-- source archive: `2-Synthetic-drift-dataset.zip`
-- source member: `2.1.2-LargeDrift_original.tif`
-- source series: `TZYX`, shape `25 x 69 x 416 x 416`, `uint16`
-- selected frames: `0, 6, 12, 18, 24`
-- derivation: full-field maximum-intensity projection over Z only
-- fixture: `tests/data/zenodo_synthetic/large_drift_xy_max.npz`
-- fixture SHA-256:
-  `c81c373b52d094d2da5cbe5df723b91b3eca180848d48dd02dfb2de7ec42e5ff`
+- **32-bit arithmetic ("Save RAM" off).** Applying ImageJ's two-pass bicubic
+  translation to raw frame 6 in float, then rounding once to uint16,
+  reproduces 99.99% of the archived voxels exactly (maximum difference 1 grey
+  level). The "Save RAM" model (16-bit rounding after each pass) does not fit
+  (maximum difference 282). The archive is the 32-bit result converted once to
+  uint16.
+- **Bicubic ImageJ translation, zero fill**, XY pass before the Z pass.
+- **Cropped output.** Frame 0 of the archived output is an exact crop of raw
+  frame 0 at (y, x) = (138, 0) with size 275 x 352 and the full 69 slices, so
+  "Extend stack to fit" was off.
 
-No spatial crop, intensity normalization, denoising, or synthetic regeneration
-is used. The fixture therefore exercises Fast4DRegPy on image pixels derived
-from the published dataset while keeping normal Git/CI use practical.
+Settings that are inferred rather than recorded are listed, with their
+evidence, in `docs/full_movie_validation.md`. No settings CSV or drift table
+for this result has been found in the archive.
 
-The regression test compares the estimated lateral translations with the
-published per-frame drift values for the selected frames and verifies that
-registration improves frame-to-reference alignment. These values are stored
-explicitly in the fixture manifest rather than regenerated from nominal
-polynomial coefficients.
+## Committed fixtures
 
-## XYZT Fiji parity fixture
+| Fixture | Size | Content | Provenance |
+| --- | --- | --- | --- |
+| `tests/data/zenodo_synthetic/large_drift_xy_max.npz` | 1.2 MB | full-field max-Z projections of raw frames 0, 6, 12, 18, 24 | Zenodo raw movie; `manifest.json` |
+| `tests/data/zenodo_xyzt/large_drift_xyzt_fiji_reference.npz` | 28 MB | raw frames 0 and 6 (all Z, full X, 192 central Y rows) and the matching archived Fiji region | Zenodo raw + Fiji output; `manifest.json`; in Git only, not in the sdist |
+| `tests/data/fiji_macro/fiji_macro_reference.npz` | 2.1 MB | synthetic 12 x 12 x 36 x 44 movie, Fiji drift tables for 8 macro settings, Fiji-corrected stacks for 3 | real Fiji macro run headless, `validation/fiji/make_macro_fixtures.py` |
+| `tests/data/imagej_interpolation/reference.npz` | 40 kB | ImageJ `translate` and `resize` outputs | real ImageJ 1.53t, `validation/fiji/make_imagej_interpolation_fixture.py` |
 
-A second fixture now tests the axial path directly against the archived Fiji
-Fast4DReg output:
+The XYZT fixture is cropped in Y, so it cannot reproduce Fiji's full-field XY
+estimate; its tests take XY from the full-field XY fixture. Fiji's actual
+frame-6 translation, recovered from the archived output to better than
+0.005 px, is recorded in its manifest.
 
-- source raw member: `2.1.2-LargeDrift_original.tif`
-- Fiji reference member: `2.2.1-LargeDrift_F4DReg.tif`
-- selected frames: 0 and 6
-- complete Z dimension retained
-- raw X dimension retained at the full 416 pixels so the Fiji axial-geometry
-  scale factor remains 6
-- compact fixture: `tests/data/zenodo_xyzt/large_drift_xyzt_fiji_reference.npz`
-- fixture size: approximately 28.1 MB
-
-The fixture stores the corresponding raw and archived Fiji-corrected volumes,
-with ROI mapping derived from frame-0 maximum-Z template matching. The regression
-test requires all three estimated translation components to match the published
-relative XYZ drift within 0.75 pixels and requires the registered frame to agree
-with the archived Fiji output at Pearson correlation >0.98.
-
-This establishes direct parity evidence for the current axial workflow on one
-published XYZT case. It does not prove universal equivalence for all voxel
-calibrations, interpolation edge cases, time-averaging settings, or bounded
-drift windows.
+Do not replace these fixtures with regenerated synthetic images: their purpose
+is to exercise Fast4DRegPy on pixels from the published dataset and on output
+written by the original Fiji implementation.

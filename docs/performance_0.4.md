@@ -1,5 +1,8 @@
 # Version 0.4 performance verification
 
+> **Superseded:** see [`performance.md`](performance.md) for 0.5.0, where the
+> default transform is the ImageJ-compatible path.
+
 ## Scope
 
 Version 0.4 parallelizes independent SciPy volume translations without changing

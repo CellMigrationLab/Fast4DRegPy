@@ -23,7 +23,7 @@ Audit date: 2026-08-08
 | Maximum and average projections | Implemented | One shared projection setting is currently used for XY and Z. |
 | First-frame and previous-frame references | Implemented | One shared reference setting is currently used for XY and Z. |
 | Time averaging | Implemented with strict bounds | Values NanoPyx would silently clamp, or that cannot support its cubic interpolation, are rejected. Fiji equivalence is not yet proven. |
-| Maximum expected drift | Implemented with strict bounds | Values NanoPyx would silently ignore for the projection size are rejected. Fiji equivalence is not yet proven. |
+| Maximum expected drift | **Partial** | `0 = auto` is supported and is the parity-safe default. For nonzero radius `r`, Fiji uses a `2r+1` CCM crop while NanoPyx 2.1.4 currently slices `2r`; bounded-window parity is not yet exact. |
 | NanoPyx backend | Explicit CPU backend | `threaded` or `unthreaded` is called directly; LiquidEngine fallback dispatch is bypassed. |
 | Subpixel translation | Implemented | NanoPyx estimation plus SciPy cubic interpolation by default; Fiji uses ImageJ bicubic, so exact pixel parity remains untested. |
 | Sequential XY correction then Z estimation | Implemented | A regression test verifies that the axial projection is generated from the XY-corrected volume. Fiji fixture parity is still required. |
@@ -46,7 +46,7 @@ Audit date: 2026-08-08
 | Line profiles and kymographs | Implemented | Available as array-returning validation helpers. |
 | Paper SNR definition | Implemented | Mean signal divided by mean background using supplied masks. |
 | Synthetic drift/noise generator | Missing | Original uses quadratic XYZ drift, optional drift noise, background homogenization, and Poisson noise. |
-| Reference regression dataset | **In progress** | The Fast4DReg archive is at Zenodo record 6534570 (latest linked version: 7514913). A compact published synthetic XY projection fixture is being extracted for automated regression testing. |
+| Reference regression dataset | **XY fixture implemented** | A 1.18 MB fixture derived directly from `2.1.2-LargeDrift_original.tif` in Zenodo 7514913 stores full-field max-Z projections at frames 0, 6, 12, 18, and 24. CI checks the published lateral drift trend. An XYZT/Fiji-output fixture is still required for axial and pixel-level parity. |
 | True 3D correlation, rotation, shear, scaling | Deliberately deferred | The paper describes translation-only projection registration; current project scope remains projection-only. |
 
 ## Scientific interpretation

@@ -42,4 +42,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/zenodo_synthetic_archive_inventory.md
           git commit -m "Inventory Zenodo synthetic archive"
-          git push
+          git pull --rebase origin zenodo-xyzt-fixture
+          git push origin HEAD:zenodo-xyzt-fixture

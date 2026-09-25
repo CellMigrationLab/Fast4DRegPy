@@ -2,12 +2,8 @@ import numpy as np
 import pytest
 
 from fast4dreg import estimate_time_drift
-from fast4dreg.estimation import (
-    _crop_movie_to_even_square,
-    _estimate_sequence_shifts,
-    _nanopyx_drift,
-    _scale_axial_projection,
-)
+from fast4dreg._drift import _crop_movie_to_even_square, _nanopyx_drift
+from fast4dreg.estimation import _estimate_sequence_shifts, _scale_axial_projection
 
 
 def _movie(frames=4, shape=(12, 14)):

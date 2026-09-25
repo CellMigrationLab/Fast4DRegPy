@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.ndimage import zoom as ndi_zoom
 
 from .axes import to_ctzyx
 from .transform import apply_drift, validate_workers
@@ -65,6 +66,38 @@ def _crop_movie_to_even_square(movie: np.ndarray) -> np.ndarray:
     y0 = (height - size) // 2
     x0 = (width - size) // 2
     return movie[:, y0 : y0 + size, x0 : x0 + size]
+
+def _scale_axial_projection(movie: np.ndarray) -> tuple[np.ndarray, int]:
+    """Bicubically stretch the axial dimension as Fiji Fast4DReg does.
+
+    Fiji computes round(width / height) on the resliced axial view, stretches
+    the axial (height) dimension by that integer factor before correlation,
+    then divides the measured axial translation by the same factor. Here
+    movie is shaped (N, axial, lateral).
+    """
+    array = np.asarray(movie, dtype=np.float32)
+    if array.ndim != 3:
+        raise ValueError(
+            f"axial projection must have shape (N,axial,lateral), got {array.shape}"
+        )
+    axial_size, lateral_size = array.shape[-2:]
+    if axial_size < 2 or lateral_size < 2:
+        raise ValueError("axial projection dimensions must both be at least 2 pixels")
+
+    # ImageJ/Fiji round() is nearest-integer for positive dimensions. Clamp to
+    # one for unusual volumes where the axial dimension is not the smaller axis.
+    scale_factor = max(1, int(np.floor(lateral_size / axial_size + 0.5)))
+    if scale_factor == 1:
+        return np.ascontiguousarray(array), scale_factor
+
+    scaled = ndi_zoom(
+        array,
+        zoom=(1.0, float(scale_factor), 1.0),
+        order=3,
+        mode="nearest",
+        prefilter=True,
+    )
+    return np.ascontiguousarray(scaled, dtype=np.float32), scale_factor
 
 
 def _load_nanopyx_estimator():
@@ -239,14 +272,20 @@ def _estimate_sequence_shifts(
                 workers=worker_count,
             )
         projection_axis = 2 if axial_axis == "Y" else 3
+        axial_movie = _project(
+            z_volumes, axis=projection_axis, projection=projection
+        )
+        scaled_axial_movie, axial_scale_factor = _scale_axial_projection(
+            axial_movie
+        )
         axial_shifts = _nanopyx_drift(
-            _project(z_volumes, axis=projection_axis, projection=projection),
+            scaled_axial_movie,
             reference=reference,
             time_averaging=time_averaging,
             max_expected_drift=max_expected_drift,
             backend=backend,
         )
-        shifts[:, 0] = axial_shifts[:, 0]
+        shifts[:, 0] = axial_shifts[:, 0] / axial_scale_factor
 
     return shifts
 

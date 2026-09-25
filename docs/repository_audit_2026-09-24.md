@@ -1,5 +1,11 @@
 # Repository readiness audit — 2026-09-24
 
+> **Historical naming note (2026-09-25):** after this audit the project was
+> renamed to **Fast4DRegPy**, with repository
+> `CellMigrationLab/Fast4DRegPy` and distribution name `fast4dregpy`.
+> Current README and `pyproject.toml` metadata supersede the naming
+> recommendations recorded below.
+
 ## Scope
 
 This pass reviewed the complete `fast4dreg-python-0.4.0` archive as a candidate

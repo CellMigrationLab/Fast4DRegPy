@@ -136,6 +136,11 @@ def test_z_projection_is_computed_after_xy_correction(monkeypatch):
         return np.zeros((2, 2), dtype=np.float32)
 
     monkeypatch.setattr("fast4dreg.estimation._nanopyx_drift", fake_drift)
+    # This test isolates operation ordering. Axial scaling has its own tests.
+    monkeypatch.setattr(
+        "fast4dreg.estimation._scale_axial_projection",
+        lambda movie: (movie, 1),
+    )
     _estimate_sequence_shifts(
         volumes,
         projection="max",

@@ -12,7 +12,6 @@ import json
 import resource
 import shutil
 import subprocess
-import threading
 import time
 from pathlib import Path
 
@@ -26,6 +25,7 @@ sys.path.insert(0, str(HERE))
 from data import extract, fetch_archive  # noqa: E402
 from make_macro_fixtures import FIRST, read_njt  # noqa: E402
 from metrics import pearson  # noqa: E402
+from process_metrics import PeakRss  # noqa: E402
 
 from fast4dreg import apply_drift, estimate_time_drift  # noqa: E402
 
@@ -46,44 +46,6 @@ SETTINGS = {
     "extend_stack_to_fit": False,
     "ram_conservative_mode": False,
 }
-
-
-class PeakRss:
-    """Sample the summed RSS of Java processes once per second."""
-
-    def __init__(self) -> None:
-        self.peak = 0
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-
-    def _rss(self) -> int:
-        total = 0
-        for pid in os.listdir("/proc"):
-            if not pid.isdigit():
-                continue
-            try:
-                if Path(f"/proc/{pid}/comm").read_text().strip() != "java":
-                    continue
-                for line in Path(f"/proc/{pid}/status").read_text().splitlines():
-                    if line.startswith("VmRSS:"):
-                        total += int(line.split()[1]) * 1024
-            except OSError:
-                # Processes can exit between listing /proc and reading status.
-                continue
-        return total
-
-    def _run(self) -> None:
-        while not self._stop.is_set():
-            self.peak = max(self.peak, self._rss())
-            self._stop.wait(1.0)
-
-    def __enter__(self) -> PeakRss:
-        self._thread.start()
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self._stop.set()
-        self._thread.join()
 
 
 def _one_match(directory: Path, pattern: str) -> Path:

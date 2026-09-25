@@ -130,9 +130,8 @@ python -m pip install "fast4dregpy[notebook] @ git+https://github.com/CellMigrat
 
 The published large-drift movie contains 25 timepoints, 69 Z planes and
 416 × 416 pixels per plane. Fast4DRegPy has been compared frame by frame with
-both the known synthetic drift and a fresh run of the original Fiji macro.
-Those measurements are kept in the repository rather than summarized from
-memory; see [docs/validation.md](docs/validation.md).
+both the known synthetic drift and a fresh run of the original Fiji macro;
+see [docs/validation.md](docs/validation.md).
 
 On the 2-CPU GitHub Actions runner used for the recorded timing comparison,
 Fast4DRegPy took 19.5 s with one transform worker and 14.9 s with four. The

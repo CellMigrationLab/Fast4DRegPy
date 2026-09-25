@@ -48,7 +48,15 @@ def _axial_axis(value: object) -> str:
 
 
 def _scale_axial_projection(movie: np.ndarray) -> tuple[np.ndarray, int]:
-    """Stretch Z as the Fiji Fast4DReg macro does before correlation."""
+    """Stretch the axial dimension exactly as Fiji Fast4DReg's ``Scale...``.
+
+    Fiji computes ``round(width / height)`` on the resliced axial projection,
+    stretches the axial (height) dimension by that integer factor with ImageJ
+    bicubic ``resize`` before correlation, and divides the measured axial
+    translation by the same factor. ImageJ's resize maps a displacement of
+    ``d`` rows to exactly ``factor * d`` rows, so the division is exact. Here
+    ``movie`` is shaped ``(N, axial, lateral)``.
+    """
     array = np.asarray(movie, dtype=np.float32)
     if array.ndim != 3:
         raise ValueError(
@@ -58,6 +66,8 @@ def _scale_axial_projection(movie: np.ndarray) -> tuple[np.ndarray, int]:
     if axial_size < 2 or lateral_size < 2:
         raise ValueError("axial projection dimensions must both be at least 2 pixels")
 
+    # ImageJ macro round() is Math.round (half up) for positive dimensions.
+    # Clamp to one for volumes whose axial dimension is not the smaller axis.
     scale_factor = max(1, int(np.floor(lateral_size / axial_size + 0.5)))
     if scale_factor == 1:
         return np.ascontiguousarray(array), 1

@@ -210,7 +210,17 @@ def _fiji_drift(
     time_averaging: int,
     max_expected_drift: int,
 ) -> np.ndarray:
-    """Estimate ``(dy,dx)`` with NanoJ/Fiji averaging and search semantics."""
+    """NanoJ ``DriftEstimation_.runAnalysis`` on an even-square movie.
+
+    Returns ``(dy,dx)`` translations to apply for every frame. Frames are
+    averaged in blocks of ``time_averaging`` (a trailing partial block is
+    kept); in "first" mode every block is correlated with the raw first frame
+    and in "previous" mode with the preceding block. A bounded search crops
+    the correlation map to the centred ``2r+1`` window. Block drifts are
+    expressed relative to block 0 and linearly interpolated to frames the way
+    ImageJ resizes a one-row image (block ``b`` sits at frame
+    ``b*(N-1)/(blocks-1)``).
+    """
     averaged = _average_blocks(movie, time_averaging)
     ccm, optimizer = _correlation_maps(
         averaged,
@@ -244,6 +254,9 @@ def _run_estimator(
         raise RuntimeError(
             f"NanoPyx 2.1.4 does not provide the requested {backend!r} backend"
         )
+    # Call the chosen implementation directly. LiquidEngine's public dispatch
+    # catches backend exceptions and retries a different backend, which would
+    # make failures and performance choices invisible to callers.
     result = runner(
         movie,
         time_averaging=1,

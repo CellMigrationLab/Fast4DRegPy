@@ -4,11 +4,10 @@ Fast4DRegPy follows the registration sequence in the Fiji Fast4DReg
 `time_estimate+apply.ijm` macro and uses ImageJ-compatible interpolation for
 the default transform path.
 
-This has been checked quantitatively rather than assumed from code structure.
 On the complete published large-drift movie, the largest difference between
 the Fast4DRegPy and fresh Fiji drift tables was 0.0047 pixels. The lowest
 whole-volume Pearson correlation between their corrected outputs was
-0.99999977. See [validation.md](validation.md) for the measurements and the
+0.9999993. See [validation.md](validation.md) for the measurements and the
 exact test conditions.
 
 ## Settings

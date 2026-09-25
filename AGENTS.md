@@ -31,16 +31,19 @@ Fiji above 0.99999.
 | Path | Contents |
 | --- | --- |
 | `src/fast4dreg/core.py` | `register_time`, `register_channels` (estimate, then apply) |
-| `src/fast4dreg/estimation.py` | projections, NanoPyx calls, Fiji time averaging and search window, axial stretch |
-| `src/fast4dreg/transform.py` | `apply_drift`, `apply_channel_shifts`, Fiji crop and Z padding |
-| `src/fast4dreg/_imagej.py` | exact NumPy ports of ImageJ `translate` (bicubic) and `resize` |
+| `src/fast4dreg/estimation.py` | XY/Z projection and estimation orchestration |
+| `src/fast4dreg/_drift.py` | NanoPyx calls, Fiji time averaging and bounded-search semantics |
+| `src/fast4dreg/transform.py` | public transform application, Fiji crop and Z padding |
+| `src/fast4dreg/_translation.py` | transform validation and low-level application helpers |
+| `src/fast4dreg/_imagej.py` | NumPy ports of ImageJ `translate` (bicubic) and `resize` |
 | `src/fast4dreg/axes.py` | axis strings, conversion to and from internal `CTZYX` |
 | `src/fast4dreg/io.py` | TIFF and drift-CSV input/output |
 | `src/fast4dreg/validation.py`, `visualization.py` | quality metrics and figures from the paper |
 | `tests/test_fiji_macro_parity.py` | comparisons with output written by the real Fiji macro |
 | `tests/test_imagej_parity.py` | comparisons with real ImageJ interpolation output |
 | `tests/test_zenodo_*.py` | extracts of the published movie and its Fiji result |
-| `validation/` | Fiji runner, fixture generators, full-movie comparison (see `validation/README.md`) |
+| `validation/full_movie/` | full-movie data loading, reference fitting, metrics, reporting and CLI |
+| `validation/fiji/` | Fiji runner and fixture-generation tools |
 
 ## Conventions that must not change
 
@@ -66,7 +69,7 @@ Fiji above 0.99999.
 - **NanoPyx differs from NanoJ.** Its bounded search window is off-centre
   and its time averaging uses different reference, blocks and
   interpolation. Fast4DRegPy therefore builds these from NanoPyx's
-  correlation primitives (`_fiji_drift` in `estimation.py`). Do not route
+  correlation primitives (`_fiji_drift` in `_drift.py`). Do not route
   these cases back through `DriftEstimator`.
 - **Fiji's own failure modes.** Fiji writes NaN or clipped values when the
   drift reaches the search limit, and zero drift when averaging leaves one

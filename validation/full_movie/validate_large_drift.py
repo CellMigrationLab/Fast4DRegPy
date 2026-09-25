@@ -14,14 +14,12 @@ else:
     os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import argparse
-import json
 import platform
 from pathlib import Path
 
 import numpy as np
 import tifffile
 
-import fast4dreg
 from analysis import (
     axis_summaries,
     crop_formula_report,
@@ -42,6 +40,8 @@ from report import (
     write_results,
     z_error_correlates,
 )
+
+import fast4dreg
 
 
 def _software_info(movie: Movie) -> dict:
@@ -67,7 +67,9 @@ def _software_info(movie: Movie) -> dict:
 def _validate_shapes(movie: Movie) -> None:
     raw, fiji = movie.raw, movie.fiji
     if raw.ndim != 4 or fiji.ndim != 4:
-        raise RuntimeError(f"expected TZYX movies, got raw={raw.shape}, fiji={fiji.shape}")
+        raise RuntimeError(
+            f"expected TZYX movies, got raw={raw.shape}, fiji={fiji.shape}"
+        )
     if raw.shape[:2] != fiji.shape[:2]:
         raise RuntimeError(
             "raw and Fiji movies must have matching T and Z dimensions; "
@@ -282,7 +284,11 @@ def main() -> int:
     if args.self_test:
         args.output_dir = args.output_dir.with_name(args.output_dir.name + "-SELF-TEST")
 
-    if args.output_dir.exists() and any(args.output_dir.iterdir()) and not args.overwrite:
+    if (
+        args.output_dir.exists()
+        and any(args.output_dir.iterdir())
+        and not args.overwrite
+    ):
         raise FileExistsError(f"{args.output_dir} is not empty; pass --overwrite")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 

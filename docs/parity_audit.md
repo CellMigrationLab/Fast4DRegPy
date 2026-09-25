@@ -25,9 +25,9 @@ Audit date: 2026-08-08
 | Time averaging | Implemented with strict bounds | Values NanoPyx would silently clamp, or that cannot support its cubic interpolation, are rejected. Fiji equivalence is not yet proven. |
 | Maximum expected drift | Implemented with strict bounds | Values NanoPyx would silently ignore for the projection size are rejected. Fiji equivalence is not yet proven. |
 | NanoPyx backend | Explicit CPU backend | `threaded` or `unthreaded` is called directly; LiquidEngine fallback dispatch is bypassed. |
-| Subpixel translation | Implemented | NanoPyx estimation plus SciPy interpolation; Fiji interpolation parity is untested. |
+| Subpixel translation | Implemented | NanoPyx estimation plus SciPy cubic interpolation by default; Fiji uses ImageJ bicubic, so exact pixel parity remains untested. |
 | Sequential XY correction then Z estimation | Implemented | A regression test verifies that the axial projection is generated from the XY-corrected volume. Fiji fixture parity is still required. |
-| Axial reslice scaling | **Partial** | Fiji bicubically scales the shallow axial projection before estimation and rescales the Z drift; Python pads to an even square. |
+| Axial reslice scaling | **Partial** | Rectangular correlation inputs now use the same closest-even-square centre crop as Fiji/NanoPyx, but Fiji additionally rescales the shallow axial reslice and rescales the measured Z drift. |
 | Independent XY/Z settings | Missing | Fiji exposes projection, averaging, reference, and maximum drift separately for XY and Z. |
 | Crop black borders | Missing | Fiji crops using extrema from the XY drift table. |
 | Extend Z stack to fit | Missing | Fiji pads Z using extrema from the Z drift table. |
@@ -46,7 +46,7 @@ Audit date: 2026-08-08
 | Line profiles and kymographs | Implemented | Available as array-returning validation helpers. |
 | Paper SNR definition | Implemented | Mean signal divided by mean background using supplied masks. |
 | Synthetic drift/noise generator | Missing | Original uses quadratic XYZ drift, optional drift noise, background homogenization, and Poisson noise. |
-| Reference regression dataset | **Archive identified** | The Fast4DReg archive is at Zenodo record 6534570 (latest linked version: 7514913). A small redistribution-safe subset plus Fiji outputs still needs to be selected as automated fixtures. |
+| Reference regression dataset | **In progress** | The Fast4DReg archive is at Zenodo record 6534570 (latest linked version: 7514913). A compact published synthetic XY projection fixture is being extracted for automated regression testing. |
 | True 3D correlation, rotation, shear, scaling | Deliberately deferred | The paper describes translation-only projection registration; current project scope remains projection-only. |
 
 ## Scientific interpretation

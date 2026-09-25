@@ -1,4 +1,4 @@
-# Version 0.4 implementation specification
+# Version 0.4.1 implementation specification
 
 ## Aim
 
@@ -29,9 +29,12 @@ that NanoJ serves in the Fiji implementation.
    worker pool; the default remains one worker.
 6. Project each XY-corrected volume over Y or X to create a `TZX` or `TZY`
    movie.
-7. Symmetrically zero-pad rectangular projections to an even square so
-   NanoPyx does not crop the usually shallow axial projection to its Z size.
-8. Use the Z component of the NanoPyx projection result as axial translation.
+7. Centre-crop rectangular projections to the closest even square before
+   NanoPyx estimation, matching both Fiji Fast4DReg and NanoPyx 2.1.4.
+8. For Z correction, stretch the axial projection using the Fiji geometry-derived
+   integer scale factor, estimate drift, and divide the measured axial shift by
+   that factor. This is an implementation approximation because calibrated voxel
+   spacing is not yet part of the public API.
 9. Combine the estimates in `(dz,dy,dx)` order.
 10. Apply the same rigid translation to every channel at a given timepoint.
 
@@ -69,21 +72,25 @@ preserved as `paper_nrmse` only for reproduction of published analyses.
 
 ## Known algorithm differences
 
-Fiji rescales the shallow axial reslice bicubically before estimation and then
-rescales the measured Z translation. Version 0.4 instead pads the complete
-axial projection to an even square. This avoids NanoPyx's implicit centre crop,
-but is not yet physically calibrated or numerically proven equivalent to Fiji.
+Version 0.4.1 now matches Fiji/NanoPyx centre-cropping and implements the same
+integer axial stretch / post-estimation shift rescaling pattern. However, this
+path is derived from image geometry rather than explicit physical calibration,
+and SciPy cubic resampling is only an approximation to ImageJ bicubic. Z parity
+therefore remains unproven until an XYZT Fiji reference fixture is added.
 
 ## Explicit failure behaviour
 
 - Axis order, image values, indices, enums, booleans, integer ranges, shifts,
   interpolation order, and output paths are validated before work begins.
 - NanoPyx settings that NanoPyx 2.1.4 would clamp or ignore are rejected.
+- `max_expected_drift=0` is the parity-safe default. A nonzero bounded
+  search window currently inherits NanoPyx 2.1.4's `2r` slice width rather
+  than Fiji's `2r+1` CCM crop; bounded-window parity remains P0 work.
 - The selected backend is never changed after failure.
 - Files are never overwritten without `overwrite=True`.
 - Z correction is never inferred from shape; callers must enable it.
 
-## Version 0.4 performance behaviour
+## Version 0.4.1 performance behaviour
 
 - `workers` is validated as a positive integer and is never inferred from the
   machine.
@@ -94,7 +101,7 @@ but is not yet physically calibrated or numerically proven equivalent to Fiji.
 - NanoPyx backend selection remains independent and explicit. Transform worker
   parallelism never changes or retries the estimation backend.
 
-## Version 0.4 exclusions
+## Version 0.4.1 exclusions
 
 There is no true 3D FFT, rotation correction, lazy loading, Zarr, GPU-specific
 code, local elastic channel warping, or automatic dimension inference.

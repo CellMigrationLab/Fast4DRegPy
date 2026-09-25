@@ -78,6 +78,21 @@ def test_float32_default_avoids_integer_subpixel_quantization():
     assert 0 < corrected[1, 3, 3] < 1
 
 
+
+
+def test_default_transform_uses_cubic_interpolation():
+    image = np.zeros((2, 12, 12), dtype=np.float32)
+    image[:, 5, 5] = 1
+    shifts = np.asarray([[0, 0, 0], [0, 0.5, 0.25]], dtype=np.float32)
+
+    default = apply_drift(image, shifts, axes="TYX")
+    cubic = apply_drift(image, shifts, axes="TYX", interpolation_order=3)
+    linear = apply_drift(image, shifts, axes="TYX", interpolation_order=1)
+
+    np.testing.assert_allclose(default, cubic, rtol=0, atol=0)
+    assert not np.allclose(default, linear)
+
+
 def test_invalid_transform_options_are_rejected_even_for_zero_shifts():
     image = np.ones((2, 8, 8), dtype=np.float32)
     shifts = np.zeros((2, 3), dtype=np.float32)

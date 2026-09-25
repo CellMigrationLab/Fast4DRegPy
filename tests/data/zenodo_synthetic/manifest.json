@@ -1,0 +1,55 @@
+{
+  "fixture": "large_drift_xy_max.npz",
+  "fixture_sha256": "c81c373b52d094d2da5cbe5df723b91b3eca180848d48dd02dfb2de7ec42e5ff",
+  "source_record": "https://zenodo.org/records/7514913",
+  "requested_archival_record": "https://zenodo.org/records/6534570",
+  "source_doi": "10.5281/zenodo.7514913",
+  "source_archive": "2-Synthetic-drift-dataset.zip",
+  "source_archive_md5": "27e3623f58d23d7c50674edc9432fe1b",
+  "source_member": "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif",
+  "source_shape": [
+    25,
+    69,
+    416,
+    416
+  ],
+  "source_axes": "TZYX",
+  "source_dtype": "uint16",
+  "selected_time_indices": [
+    0,
+    6,
+    12,
+    18,
+    24
+  ],
+  "derived_operation": "maximum intensity projection over Z; channel 0 if present",
+  "license": "CC BY 4.0",
+  "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
+  "selected_published_drift_xyz_pixels": [
+    [
+      -0.1846,
+      -0.842,
+      0.7736
+    ],
+    [
+      4.83,
+      -2.012,
+      -2.4789
+    ],
+    [
+      15.5335,
+      -25.244,
+      -7.4236
+    ],
+    [
+      34.7591,
+      -71.216,
+      -10.8287
+    ],
+    [
+      62.7437,
+      -137.609,
+      -14.8706
+    ]
+  ]
+}

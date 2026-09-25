@@ -2,13 +2,58 @@ import numpy as np
 import pytest
 
 from fast4dreg import estimate_time_drift
-from fast4dreg.estimation import _estimate_sequence_shifts, _nanopyx_drift
+from fast4dreg.estimation import (
+    _crop_movie_to_even_square,
+    _estimate_sequence_shifts,
+    _nanopyx_drift,
+    _scale_axial_projection,
+)
 
 
 def _movie(frames=4, shape=(12, 14)):
     y, x = np.indices(shape, dtype=np.float32)
     base = np.exp(-((y - 4) ** 2 + (x - 7) ** 2) / 6)
     return np.stack([np.roll(base, index, axis=1) for index in range(frames)])
+
+
+
+
+def test_even_square_preparation_matches_fiji_center_crop():
+    movie = np.arange(2 * 7 * 10, dtype=np.float32).reshape(2, 7, 10)
+    cropped = _crop_movie_to_even_square(movie)
+    assert cropped.shape == (2, 6, 6)
+    np.testing.assert_array_equal(cropped, movie[:, 0:6, 2:8])
+
+
+
+def test_axial_projection_scaling_matches_fiji_shape_rule():
+    movie = np.zeros((2, 9, 52), dtype=np.float32)
+    movie[:, 4, 20] = 1.0
+
+    scaled, factor = _scale_axial_projection(movie)
+
+    assert factor == 6
+    assert scaled.shape == (2, 54, 52)
+    assert scaled.dtype == np.float32
+
+
+def test_axial_projection_scaling_clamps_unusual_aspect_ratio_to_one():
+    movie = np.ones((2, 20, 10), dtype=np.float32)
+
+    scaled, factor = _scale_axial_projection(movie)
+
+    assert factor == 1
+    np.testing.assert_array_equal(scaled, movie)
+
+def test_time_averaging_rejects_trailing_partial_block():
+    with pytest.raises(ValueError, match="divide the number of frames exactly"):
+        _nanopyx_drift(
+            _movie(frames=14),
+            reference="first",
+            time_averaging=3,
+            max_expected_drift=0,
+            backend="threaded",
+        )
 
 
 def test_time_estimation_accepts_lowercase_axes(monkeypatch):
@@ -91,6 +136,11 @@ def test_z_projection_is_computed_after_xy_correction(monkeypatch):
         return np.zeros((2, 2), dtype=np.float32)
 
     monkeypatch.setattr("fast4dreg.estimation._nanopyx_drift", fake_drift)
+    # This test isolates operation ordering. Axial scaling has its own tests.
+    monkeypatch.setattr(
+        "fast4dreg.estimation._scale_axial_projection",
+        lambda movie: (movie, 1),
+    )
     _estimate_sequence_shifts(
         volumes,
         projection="max",
@@ -106,7 +156,7 @@ def test_z_projection_is_computed_after_xy_correction(monkeypatch):
 
     assert len(calls) == 2
     # Moving volume was translated by dx=+1 before the Y projection.
-    assert calls[1][1, 1, 3] == 0
+    assert calls[1][1, 1, 3] == pytest.approx(0, abs=1e-6)
     assert calls[1][1, 1, 4] == pytest.approx(1)
 
 

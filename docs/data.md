@@ -9,7 +9,7 @@ The data associated with Fast4DReg are archived on Zenodo.
 - Title: **Fast4DRegistration**
 - Version: 1.0
 
-This is the dataset location requested for the Fast4DReg Python repository and
+This is the dataset location requested for the Fast4DRegPy repository and
 should remain documented even if newer versions are published.
 
 Zenodo currently marks this record as having a newer version. The linked
@@ -28,7 +28,7 @@ additional noisy-image and biological datasets.
 
 The complete archive is large (the current expanded record is tens of
 gigabytes), so it should not be committed to this repository. Automated parity
- tests should instead use a documented, redistribution-safe subset or a small
+tests should instead use a documented, redistribution-safe subset or a small
 fixture derived from the archive, with checksums and provenance recorded.
 
 ## Intended use in the test suite
@@ -46,3 +46,32 @@ This is particularly important for Z registration because the Fiji workflow
 rescales the axial reslice before drift estimation and rescales the measured
 Z drift afterward. That behavior is not yet reproduced exactly by version
 0.4.0 of the Python implementation.
+
+
+## Committed regression fixture
+
+The repository contains a compact fixture derived directly from the published
+large-drift synthetic dataset:
+
+- source archive: `2-Synthetic-drift-dataset.zip`
+- source member: `2.1.2-LargeDrift_original.tif`
+- source series: `TZYX`, shape `25 x 69 x 416 x 416`, `uint16`
+- selected frames: `0, 6, 12, 18, 24`
+- derivation: full-field maximum-intensity projection over Z only
+- fixture: `tests/data/zenodo_synthetic/large_drift_xy_max.npz`
+- fixture SHA-256:
+  `c81c373b52d094d2da5cbe5df723b91b3eca180848d48dd02dfb2de7ec42e5ff`
+
+No spatial crop, intensity normalization, denoising, or synthetic regeneration
+is used. The fixture therefore exercises Fast4DRegPy on image pixels derived
+from the published dataset while keeping normal Git/CI use practical.
+
+The regression test compares the estimated lateral translations with the
+published per-frame drift values for the selected frames and verifies that
+registration improves frame-to-reference alignment. These values are stored
+explicitly in the fixture manifest rather than regenerated from nominal
+polynomial coefficients.
+
+This XY projection fixture does **not** establish axial parity. A separate
+XYZT fixture is still needed to validate Fiji's calibrated axial reslice and
+Z-drift rescaling.

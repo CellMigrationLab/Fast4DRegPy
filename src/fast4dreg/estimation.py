@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.ndimage import zoom as ndi_zoom
 
 from .axes import to_ctzyx
 from .transform import apply_drift, validate_workers
@@ -54,20 +55,49 @@ def _project(sequence: np.ndarray, axis: int, projection: str) -> np.ndarray:
     return np.mean(sequence, axis=axis)
 
 
-def _pad_movie_to_even_square(movie: np.ndarray) -> np.ndarray:
-    """Pad frames so NanoPyx does not silently centre-crop rectangles."""
+def _crop_movie_to_even_square(movie: np.ndarray) -> np.ndarray:
+    """Centre-crop frames to the closest even square, as Fiji/NanoPyx do."""
     height, width = movie.shape[-2:]
-    size = max(height, width)
+    size = min(height, width)
     if size % 2:
-        size += 1
-    pad_height = size - height
-    pad_width = size - width
-    padding = (
-        (0, 0),
-        (pad_height // 2, pad_height - pad_height // 2),
-        (pad_width // 2, pad_width - pad_width // 2),
+        size -= 1
+    if size < 2:
+        raise ValueError("projection frames are too small for even-square cropping")
+    y0 = (height - size) // 2
+    x0 = (width - size) // 2
+    return movie[:, y0 : y0 + size, x0 : x0 + size]
+
+def _scale_axial_projection(movie: np.ndarray) -> tuple[np.ndarray, int]:
+    """Bicubically stretch the axial dimension as Fiji Fast4DReg does.
+
+    Fiji computes round(width / height) on the resliced axial view, stretches
+    the axial (height) dimension by that integer factor before correlation,
+    then divides the measured axial translation by the same factor. Here
+    movie is shaped (N, axial, lateral).
+    """
+    array = np.asarray(movie, dtype=np.float32)
+    if array.ndim != 3:
+        raise ValueError(
+            f"axial projection must have shape (N,axial,lateral), got {array.shape}"
+        )
+    axial_size, lateral_size = array.shape[-2:]
+    if axial_size < 2 or lateral_size < 2:
+        raise ValueError("axial projection dimensions must both be at least 2 pixels")
+
+    # ImageJ/Fiji round() is nearest-integer for positive dimensions. Clamp to
+    # one for unusual volumes where the axial dimension is not the smaller axis.
+    scale_factor = max(1, int(np.floor(lateral_size / axial_size + 0.5)))
+    if scale_factor == 1:
+        return np.ascontiguousarray(array), scale_factor
+
+    scaled = ndi_zoom(
+        array,
+        zoom=(1.0, float(scale_factor), 1.0),
+        order=3,
+        mode="nearest",
+        prefilter=True,
     )
-    return np.pad(movie, padding, mode="constant")
+    return np.ascontiguousarray(scaled, dtype=np.float32), scale_factor
 
 
 def _load_nanopyx_estimator():
@@ -113,14 +143,22 @@ def _validate_nanopyx_movie(
             "time_averaging must not exceed half the number of frames; NanoPyx "
             "would otherwise change it silently"
         )
+    if averaging > 1 and frame_count % averaging != 0:
+        raise ValueError(
+            "time_averaging must divide the number of frames exactly; NanoPyx "
+            "2.1.4 otherwise drops the trailing partial block, whereas Fiji "
+            "Fast4DReg retains it"
+        )
     if averaging > 1 and frame_count // averaging < 4:
         raise ValueError(
             "time_averaging > 1 requires at least four averaged frame groups "
             "for NanoPyx cubic interpolation"
         )
 
-    padded_size = max(array.shape[1:]) + (max(array.shape[1:]) % 2)
-    if maximum > 0 and 2 * maximum + 1 >= padded_size:
+    cropped_size = min(array.shape[1:])
+    if cropped_size % 2:
+        cropped_size -= 1
+    if maximum > 0 and 2 * maximum + 1 >= cropped_size:
         raise ValueError(
             "max_expected_drift is too large for the projection dimensions; "
             "NanoPyx would otherwise ignore it silently"
@@ -145,7 +183,7 @@ def _nanopyx_drift(
     reference_mode = _choice(reference, name="reference", choices=_VALID_REFERENCES)
     backend_name = _choice(backend, name="backend", choices=_VALID_BACKENDS)
     prepared = np.ascontiguousarray(
-        _pad_movie_to_even_square(array.astype(np.float32, copy=False))
+        _crop_movie_to_even_square(array.astype(np.float32, copy=False))
     )
 
     estimator = _load_nanopyx_estimator()
@@ -228,20 +266,26 @@ def _estimate_sequence_shifts(
                 z_volumes,
                 xy_shifts,
                 axes="TZYX",
-                interpolation_order=1,
+                interpolation_order=3,
                 cval=0.0,
                 output_dtype="float32",
                 workers=worker_count,
             )
         projection_axis = 2 if axial_axis == "Y" else 3
+        axial_movie = _project(
+            z_volumes, axis=projection_axis, projection=projection
+        )
+        scaled_axial_movie, axial_scale_factor = _scale_axial_projection(
+            axial_movie
+        )
         axial_shifts = _nanopyx_drift(
-            _project(z_volumes, axis=projection_axis, projection=projection),
+            scaled_axial_movie,
             reference=reference,
             time_averaging=time_averaging,
             max_expected_drift=max_expected_drift,
             backend=backend,
         )
-        shifts[:, 0] = axial_shifts[:, 0]
+        shifts[:, 0] = axial_shifts[:, 0] / axial_scale_factor
 
     return shifts
 

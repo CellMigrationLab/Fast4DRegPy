@@ -16,10 +16,11 @@ notebooks, pipelines, and headless execution.
 
 Version `0.4.1` keeps registration, transformation, axes, I/O, scalar metrics,
 and validation images in separate modules while exposing six direct
-registration functions. The major remaining Fiji-parity gap is axial (Z)
-reslice scaling; it is documented explicitly in
-[`docs/parity_audit.md`](docs/parity_audit.md) rather than hidden behind an
-unverified approximation. The complete previous audit and fix list is in
+registration functions. The major remaining Fiji-parity gap is calibrated,
+numerically validated axial (Z) registration: the current implementation
+reproduces the Fiji-style geometry-derived axial stretch/rescaling pattern,
+but exact equivalence still requires an XYZT Fiji reference fixture. This is
+documented explicitly in [`docs/parity_audit.md`](docs/parity_audit.md). The complete previous audit and fix list is in
 [`docs/code_audit_2026-08-08.md`](docs/code_audit_2026-08-08.md).
 
 The package does not infer dimensions or silently change settings. Invalid

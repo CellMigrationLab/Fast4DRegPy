@@ -25,13 +25,13 @@ def _writable_nanopyx_runtime(tmp_path_factory):
         os.path.expanduser = original_expanduser
 
 
-def _asymmetric_volume(shape=(9, 48, 52)):
+def _asymmetric_volume(shape=(25, 48, 52)):
     z, y, x = np.indices(shape, dtype=np.float32)
     volume = np.zeros(shape, dtype=np.float32)
     for center, amplitude, sigma in [
-        ((2.0, 13.0, 17.0), 1.0, 2.0),
-        ((6.0, 31.0, 36.0), 0.7, 3.0),
-        ((4.0, 20.0, 41.0), 0.5, 1.5),
+        ((5.0, 13.0, 17.0), 1.0, 2.0),
+        ((18.0, 31.0, 36.0), 0.7, 3.0),
+        ((11.0, 20.0, 41.0), 0.5, 1.5),
     ]:
         distance = (z - center[0]) ** 2 + (y - center[1]) ** 2 + (x - center[2]) ** 2
         volume += amplitude * np.exp(-distance / (2 * sigma**2))

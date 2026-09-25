@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ._drift import _crop_movie_to_even_square, _nanopyx_drift
+from ._drift import _nanopyx_drift
 from ._imagej import resize_rows
 from .axes import to_ctzyx
 from .transform import apply_drift, validate_workers

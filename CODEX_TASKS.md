@@ -31,9 +31,9 @@ Acceptance criteria:
 
 ### 2. Reproduce Fiji axial reslice scaling
 
-Replace or augment even-square padding with a documented physical-pixel-size
-aware axial-resampling path equivalent to the Fiji macros' bicubic scaling and
-Z-drift rescaling.
+Add a documented physical-pixel-size-aware axial-resampling path equivalent
+to the Fiji macros' bicubic reslice scaling and Z-drift rescaling. The basic
+closest-even-square centre crop already matches Fiji/NanoPyx.
 
 Acceptance criteria:
 

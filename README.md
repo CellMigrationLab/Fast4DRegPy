@@ -1,6 +1,6 @@
-# Fast4DReg Python
+# Fast4DRegPy
 
-**Fast4DReg Python** is the Python implementation of the Fast4DReg method for
+**Fast4DRegPy** is the Python implementation of the Fast4DReg method for
 projection-based drift correction and channel registration of 2D and 3D
 microscopy data. It uses
 [NanoPyx](https://github.com/HenriquesLab/NanoPyx) for the cross-correlation
@@ -14,7 +14,7 @@ features. The goal here is a direct, testable Python implementation of the
 original Fast4DReg workflow and algorithm, with an API suitable for scripts,
 notebooks, pipelines, and headless execution.
 
-Version `0.4.0` keeps registration, transformation, axes, I/O, scalar metrics,
+Version `0.4.1` keeps registration, transformation, axes, I/O, scalar metrics,
 and validation images in separate modules while exposing six direct
 registration functions. The major remaining Fiji-parity gap is axial (Z)
 reslice scaling; it is documented explicitly in
@@ -95,9 +95,22 @@ the Fast4DReg workflow.
 
 `backend` must be either `"threaded"` or `"unthreaded"`. The selected NanoPyx
 implementation is called directly; failures are propagated and never retried
-with another backend. Corrected arrays default to `float32` to retain subpixel
-interpolation. Pass `output_dtype="input"` explicitly if preserving the input
-dtype is more important than avoiding integer quantization.
+with another backend. Before correlation, rectangular projections are
+centre-cropped to the closest even square, matching both Fiji Fast4DReg and
+NanoPyx.
+
+Corrected arrays default to `float32` to retain subpixel interpolation.
+Translations default to cubic interpolation (`interpolation_order=3`), the
+closest SciPy analogue to Fiji Fast4DReg's explicit bicubic translation. Exact
+pixel-level equivalence to ImageJ bicubic interpolation still requires
+reference-fixture validation. Pass `output_dtype="input"` explicitly if
+preserving the input dtype is more important than avoiding integer
+quantization.
+
+When `time_averaging > 1`, the frame count must currently be exactly divisible
+by the averaging factor. NanoPyx 2.1.4 otherwise drops the trailing partial
+block, while Fiji Fast4DReg retains it; Fiji-compatible partial-block averaging
+remains a parity task.
 
 `workers` controls how many independent volumes are transformed concurrently.
 It defaults to `1`, so library calls never choose a concurrency level silently.
@@ -205,7 +218,7 @@ the prioritized implementation backlog.
 
 ## Citation
 
-If you use Fast4DReg Python, cite the original Fast4DReg publication and the
+If you use Fast4DRegPy, cite the original Fast4DReg publication and the
 NanoPyx/NanoJ work that provides the underlying registration engine. The
 Fast4DReg paper is:
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Split drift estimation, translation helpers and full-movie validation into
+  smaller modules without changing the default registration algorithm.
+- `backend="unthreaded"` now raises an explicit error when used with
+  `time_averaging > 1` or `max_expected_drift > 0`. Those Fiji-compatible
+  modes use NanoPyx's compiled correlation primitives directly; the backend
+  setting was previously accepted but ignored.
+- Full-movie validation now fails if reference fitting, commit identification,
+  Fiji timing extraction or output-shape comparison is incomplete.
+
 ## 0.5.0
 
 Validated against Fiji Fast4DReg on the complete published test movie; see
@@ -8,7 +19,7 @@ Validated against Fiji Fast4DReg on the complete published test movie; see
 ### Changed
 
 - Translations now use ImageJ's bicubic interpolation by default, applied in
-  XY and then in Z as Fiji does. The corrected images match Fiji's.
+  XY and then in Z as Fiji does. The corrected images closely match Fiji's.
   The previous SciPy spline interpolation is available with
   `interpolation="scipy"`. `interpolation_order` and a non-zero `cval` are
   only accepted with `interpolation="scipy"`.

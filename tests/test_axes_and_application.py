@@ -169,7 +169,7 @@ def test_parallel_worker_failure_is_propagated(monkeypatch):
     def fail(*args, **kwargs):
         raise RuntimeError("transform failed")
 
-    monkeypatch.setattr("fast4dreg.transform._shift_volume_into", fail)
+    monkeypatch.setattr("fast4dreg._translation.shift_volume_into", fail)
     with pytest.raises(RuntimeError, match="transform failed"):
         apply_drift(image, np.zeros((3, 3)), axes="TYX", workers=2)
 

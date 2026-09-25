@@ -2,12 +2,8 @@ import numpy as np
 import pytest
 
 from fast4dreg import estimate_time_drift
-from fast4dreg.estimation import (
-    _crop_movie_to_even_square,
-    _estimate_sequence_shifts,
-    _nanopyx_drift,
-    _scale_axial_projection,
-)
+from fast4dreg._drift import _crop_movie_to_even_square, _nanopyx_drift
+from fast4dreg.estimation import _estimate_sequence_shifts, _scale_axial_projection
 
 
 def _movie(frames=4, shape=(12, 14)):
@@ -125,13 +121,33 @@ def test_bounded_window_is_centred_2r_plus_1_like_fiji():
     np.testing.assert_allclose(bounded, automatic, atol=0.01)
 
 
+def test_fiji_compatibility_path_rejects_unthreaded_backend():
+    with pytest.raises(ValueError, match="backend='unthreaded' is not available"):
+        _nanopyx_drift(
+            _movie(frames=6),
+            reference="first",
+            time_averaging=2,
+            max_expected_drift=0,
+            backend="unthreaded",
+        )
+
+    with pytest.raises(ValueError, match="backend='unthreaded' is not available"):
+        _nanopyx_drift(
+            _movie(frames=4, shape=(24, 24)),
+            reference="first",
+            time_averaging=1,
+            max_expected_drift=3,
+            backend="unthreaded",
+        )
+
+
 def test_selected_backend_error_is_not_swallowed(monkeypatch):
     class BrokenEstimator:
         def _run_threaded(self, *args, **kwargs):
             raise RuntimeError("backend failed")
 
     monkeypatch.setattr(
-        "fast4dreg.estimation._load_nanopyx_estimator", lambda: BrokenEstimator()
+        "fast4dreg._drift._load_nanopyx_estimator", lambda: BrokenEstimator()
     )
     with pytest.raises(RuntimeError, match="backend failed"):
         _nanopyx_drift(

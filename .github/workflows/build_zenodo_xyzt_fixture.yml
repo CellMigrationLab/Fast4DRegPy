@@ -17,7 +17,7 @@ jobs:
         with:
           ref: zenodo-xyzt-fixture
       - name: Install extraction dependencies
-        run: python -m pip install --quiet remotezip tifffile numpy
+        run: python -m pip install --quiet remotezip tifffile numpy scikit-image
       - name: Extract compact XYZT and Fiji reference fixture
         run: |
           python - <<'PY'
@@ -54,24 +54,52 @@ jobs:
                   raise RuntimeError(f"Expected TZYX, got {axes} {shape}")
               return array, axes, shape, dtype
 
+          from skimage.feature import match_template
+
           time_indices = np.asarray([0, 6], dtype=np.int16)
-          crop_size = 160
+          target_size = 160
+          margin = 16
+          raw_size = target_size + 2 * margin
 
           raw, raw_axes, raw_shape, raw_dtype = read_tzyx(tmp / "raw.tif")
-          y0 = (raw.shape[-2] - crop_size) // 2
-          x0 = (raw.shape[-1] - crop_size) // 2
-          raw_crop = np.ascontiguousarray(
-              raw[time_indices, :, y0:y0+crop_size, x0:x0+crop_size]
-          )
-          del raw
-
           fiji, fiji_axes, fiji_shape, fiji_dtype = read_tzyx(tmp / "fiji.tif")
-          if tuple(fiji.shape) != tuple(raw_shape):
-              raise RuntimeError(f"Shape mismatch: raw={raw_shape}, Fiji={fiji.shape}")
-          fiji_crop = np.ascontiguousarray(
-              fiji[time_indices, :, y0:y0+crop_size, x0:x0+crop_size]
+          if raw.shape[:2] != fiji.shape[:2]:
+              raise RuntimeError(
+                  f"T/Z mismatch: raw={raw.shape[:2]}, Fiji={fiji.shape[:2]}"
+              )
+
+          raw_mip = np.max(raw[0], axis=0).astype(np.float32)
+          fiji_mip = np.max(fiji[0], axis=0).astype(np.float32)
+          match = match_template(raw_mip, fiji_mip, pad_input=False)
+          match_y, match_x = np.unravel_index(np.argmax(match), match.shape)
+          match_score = float(match[match_y, match_x])
+
+          fiji_y0 = (fiji.shape[-2] - target_size) // 2
+          fiji_x0 = (fiji.shape[-1] - target_size) // 2
+          raw_y0 = int(match_y + fiji_y0 - margin)
+          raw_x0 = int(match_x + fiji_x0 - margin)
+          if raw_y0 < 0 or raw_x0 < 0:
+              raise RuntimeError("Mapped raw ROI would extend above/left of source")
+          if raw_y0 + raw_size > raw.shape[-2] or raw_x0 + raw_size > raw.shape[-1]:
+              raise RuntimeError("Mapped raw ROI would extend beyond source")
+
+          raw_crop = np.ascontiguousarray(
+              raw[
+                  time_indices,
+                  :,
+                  raw_y0 : raw_y0 + raw_size,
+                  raw_x0 : raw_x0 + raw_size,
+              ]
           )
-          del fiji
+          fiji_crop = np.ascontiguousarray(
+              fiji[
+                  time_indices,
+                  :,
+                  fiji_y0 : fiji_y0 + target_size,
+                  fiji_x0 : fiji_x0 + target_size,
+              ]
+          )
+          del raw, fiji
 
           outdir = Path("tests/data/zenodo_xyzt")
           outdir.mkdir(parents=True, exist_ok=True)
@@ -82,7 +110,9 @@ jobs:
               fiji_corrected=fiji_crop,
               time_indices=time_indices,
               axes=np.asarray("TZYX"),
-              crop_yx=np.asarray([y0, x0, crop_size, crop_size], dtype=np.int16),
+              raw_roi_yx=np.asarray([raw_y0, raw_x0, raw_size, raw_size], dtype=np.int16),
+              fiji_roi_yx=np.asarray([fiji_y0, fiji_x0, target_size, target_size], dtype=np.int16),
+              comparison_margin=np.asarray(margin, dtype=np.int16),
           )
 
           sha256 = hashlib.sha256(fixture.read_bytes()).hexdigest()
@@ -103,14 +133,24 @@ jobs:
               "fiji_axes": fiji_axes,
               "fiji_dtype": fiji_dtype,
               "selected_time_indices": time_indices.tolist(),
-              "crop_yx": [int(y0), int(x0), crop_size, crop_size],
+              "frame0_fiji_in_raw_yx": [int(match_y), int(match_x)],
+              "frame0_match_score": match_score,
+              "raw_roi_yx": [raw_y0, raw_x0, raw_size, raw_size],
+              "fiji_roi_yx": [fiji_y0, fiji_x0, target_size, target_size],
+              "comparison_margin": margin,
               "license": "CC BY 4.0",
               "published_reference": "Fast4DReg JCS 2023 Fig. S1A / Pylvanainen thesis Table 7",
               "selected_published_drift_xyz_pixels": [
                   [-0.1846, -0.842, 0.7736],
                   [4.83, -2.012, -2.4789]
               ],
-              "derivation": "Frames 0 and 6; complete Z; identical central 160x160 XY crop from raw and archived Fast4DReg-corrected TIFFs; no resampling or intensity normalization"
+              "derivation": (
+                  "Frames 0 and 6; complete Z; frame-0 max-Z template matching "
+                  "maps the archived Fiji overlap crop into the raw image; "
+                  "a central 160x160 Fiji ROI and corresponding raw ROI with "
+                  "16-pixel XY margin are stored without resampling or "
+                  "intensity normalization"
+              ),
           }
           (outdir / "manifest.json").write_text(
               json.dumps(manifest, indent=2) + "\n", encoding="utf-8"

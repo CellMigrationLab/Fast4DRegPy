@@ -4,4 +4,7 @@ recursive-include benchmarks *.py
 recursive-include docs *.md
 recursive-include notebooks *.ipynb
 recursive-include tests/data *.npz *.json *.md
+# The 28 MB XYZT Fiji fixture stays in Git only; ship neither it nor its test,
+# so the sdist test suite is self-contained.
 prune tests/data/zenodo_xyzt
+exclude tests/test_zenodo_xyzt.py

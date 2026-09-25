@@ -9,6 +9,8 @@ from .io import load_drift_csv, load_tiff, save_drift_csv, save_tiff
 from .transform import (
     apply_channel_shifts,
     apply_drift,
+    fiji_crop_bounds,
+    fiji_z_padding,
 )
 from .validation import (
     FrameValidation,
@@ -33,6 +35,8 @@ __all__ = [
     "estimate_channel_shifts",
     "estimate_time_drift",
     "evaluate_registration",
+    "fiji_crop_bounds",
+    "fiji_z_padding",
     "line_intensity_profile",
     "load_drift_csv",
     "load_tiff",

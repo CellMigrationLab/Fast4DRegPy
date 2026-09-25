@@ -1,0 +1,58 @@
+name: full-movie validation
+
+# Downloads the published Fast4DReg synthetic dataset (Zenodo record 7514913),
+# verifies its checksum, registers the complete 25-frame, 69-plane movie and
+# compares it with the archived Fiji output and the synthetic ground truth.
+# Manual only: it downloads several GB and runs for tens of minutes.
+on:
+  # TEMPORARY: run once on the audit branch to obtain the first full-movie
+  # results; remove before merging (workflow_dispatch needs the file on main).
+  push:
+    branches: [claude/fast4dreg-py-audit-r2p1py]
+    paths: [".github/workflows/full-movie-validation.yml", "validation/full_movie/**"]
+  workflow_dispatch:
+    inputs:
+      gate:
+        description: "Threshold preset (baseline or strict)"
+        default: baseline
+        type: choice
+        options: [baseline, strict]
+      workers:
+        description: "Transform worker threads for the parallel run"
+        default: "4"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[validation]"
+      - name: Cache the verified Zenodo archive
+        uses: actions/cache@v4
+        with:
+          path: .validation-data/2-Synthetic-drift-dataset.zip
+          key: zenodo-7514913-2-Synthetic-drift-dataset-27e3623f58d23d7c50674edc9432fe1b
+      - name: Run full-movie validation
+        run: >
+          python validation/full_movie/validate_large_drift.py
+          --download --gate ${{ inputs.gate || 'baseline' }}
+          --workers ${{ inputs.workers || '4' }}
+      - name: Print machine-readable results
+        if: always()
+        run: |
+          for f in validation-results/*/summary.json validation-results/*/run_info.json \
+                   validation-results/*/shifts_per_frame.csv \
+                   validation-results/*/fiji_comparison_metrics.csv; do
+            echo "===== $f"; cat "$f" || true
+          done
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-movie-validation-results
+          path: validation-results/

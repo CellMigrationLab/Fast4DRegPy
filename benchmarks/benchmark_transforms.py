@@ -19,6 +19,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--x", type=int, default=256)
     parser.add_argument("--workers", type=int, nargs="+", default=[1, 2, 4, 8])
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument(
+        "--interpolation", choices=["imagej", "scipy"], default="imagej"
+    )
     return parser.parse_args()
 
 
@@ -37,18 +40,31 @@ def main() -> None:
     rng = np.random.default_rng(1)
     image = rng.normal(size=dimensions).astype(np.float32)
     index = np.arange(args.timepoints, dtype=np.float32)
-    shifts = np.column_stack(
-        (index * 0.13 % 3, index * 0.27 % 5, -(index * 0.31 % 7))
-    )
+    shifts = np.column_stack((index * 0.13 % 3, index * 0.27 % 5, -(index * 0.31 % 7)))
 
-    print(f"shape={image.shape}, dtype={image.dtype}, repeats={args.repeats}")
+    print(
+        f"shape={image.shape}, dtype={image.dtype}, repeats={args.repeats}, "
+        f"interpolation={args.interpolation}"
+    )
     baseline = None
     for workers in args.workers:
-        apply_drift(image, shifts, axes="TZYX", workers=workers)
+        apply_drift(
+            image,
+            shifts,
+            axes="TZYX",
+            interpolation=args.interpolation,
+            workers=workers,
+        )
         durations = []
         for _ in range(args.repeats):
             start = time.perf_counter()
-            apply_drift(image, shifts, axes="TZYX", workers=workers)
+            apply_drift(
+                image,
+                shifts,
+                axes="TZYX",
+                interpolation=args.interpolation,
+                workers=workers,
+            )
             durations.append(time.perf_counter() - start)
         median = statistics.median(durations)
         if baseline is None:

@@ -27,9 +27,13 @@ def _cubic(x: np.ndarray) -> np.ndarray:
 
 
 def _bilinear(image: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
-    """ImageJ ``getBilinearInterpolatedPixel`` for a float image."""
-    height, width = image.shape
-    out = np.zeros(xs.shape, dtype=np.float64)
+    """ImageJ ``getBilinearInterpolatedPixel`` for a float image.
+
+    ``image`` may carry leading batch axes; the same sample grid is used for
+    every plane.
+    """
+    height, width = image.shape[-2:]
+    out = np.zeros(image.shape[:-2] + xs.shape, dtype=np.float64)
     inside = (xs >= -1) & (xs < width) & (ys >= -1) & (ys < height)
     if not np.any(inside):
         return out
@@ -41,13 +45,13 @@ def _bilinear(image: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
     yb = y.astype(np.intp)
     fx = x - xb
     fy = y - yb
-    lower_left = image[yb, xb]
-    lower_right = image[yb, xb + 1]
-    upper_right = image[yb + 1, xb + 1]
-    upper_left = image[yb + 1, xb]
+    lower_left = image[..., yb, xb]
+    lower_right = image[..., yb, xb + 1]
+    upper_right = image[..., yb + 1, xb + 1]
+    upper_left = image[..., yb + 1, xb]
     upper = upper_left + fx * (upper_right - upper_left)
     lower = lower_left + fx * (lower_right - lower_left)
-    out[inside] = lower + fy * (upper - lower)
+    out[..., inside] = lower + fy * (upper - lower)
     return out
 
 
@@ -76,10 +80,67 @@ def _bicubic_rows_cols(image: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.
 
     edge_x = (u0 <= 0) | (u0 >= width - 2)
     edge_y = (v0 <= 0) | (v0 >= height - 2)
-    edge = edge_y[:, None] | edge_x[None, :]
-    if np.any(edge):
-        grid_y, grid_x = np.meshgrid(ys, xs, indexing="ij")
-        result[edge] = _bilinear(image, grid_x[edge], grid_y[edge])
+    _apply_edge_rule(image, result, xs, ys, edge_x, edge_y)
+    return result
+
+
+def _apply_edge_rule(
+    image: np.ndarray,
+    result: np.ndarray,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    edge_x: np.ndarray,
+    edge_y: np.ndarray,
+) -> None:
+    """Overwrite border samples with ImageJ's bilinear fallback, in place.
+
+    Only the affected rows and columns are evaluated, so the cost scales with
+    the border rather than with the whole plane.
+    """
+    if np.any(edge_y):
+        rows = np.flatnonzero(edge_y)
+        grid_y, grid_x = np.meshgrid(ys[rows], xs, indexing="ij")
+        result[..., rows, :] = _bilinear(image, grid_x, grid_y)
+    if np.any(edge_x):
+        columns = np.flatnonzero(edge_x)
+        grid_y, grid_x = np.meshgrid(ys, xs[columns], indexing="ij")
+        result[..., columns] = _bilinear(image, grid_x, grid_y)
+
+
+def _translate_bicubic(image: np.ndarray, dx: float, dy: float) -> np.ndarray:
+    """Fast path of :func:`_bicubic_rows_cols` for a constant translation.
+
+    Every output pixel shares the same fractional offset, so the Catmull-Rom
+    weights are scalars and the taps are contiguous slices of a zero-padded
+    copy. Samples whose support leaves the image are replaced by the edge rule.
+    """
+    height, width = image.shape[-2:]
+    kx = int(np.floor(-dx))
+    ky = int(np.floor(-dy))
+    fx = -dx - kx
+    fy = -dy - ky
+    pad = max(abs(kx), abs(ky)) + 3
+    padded = np.pad(image, [(0, 0)] * (image.ndim - 2) + [(pad, pad), (pad, pad)])
+    columns = np.zeros((*image.shape[:-2], height + 2 * pad, width), dtype=np.float64)
+    for i in range(4):
+        start = pad + kx - 1 + i
+        weight = _cubic(np.float64(fx + 1 - i))
+        columns += padded[..., start : start + width] * weight
+    result = np.zeros(image.shape, dtype=np.float64)
+    for j in range(4):
+        start = pad + ky - 1 + j
+        weight = _cubic(np.float64(fy + 1 - j))
+        result += columns[..., start : start + height, :] * weight
+    u0 = np.arange(width) + kx
+    v0 = np.arange(height) + ky
+    _apply_edge_rule(
+        image,
+        result,
+        np.arange(width, dtype=np.float64) - dx,
+        np.arange(height, dtype=np.float64) - dy,
+        (u0 <= 0) | (u0 >= width - 2),
+        (v0 <= 0) | (v0 >= height - 2),
+    )
     return result
 
 
@@ -95,29 +156,29 @@ def _validate_plane(plane: np.ndarray) -> np.ndarray:
     return array
 
 
-def translate_plane(plane: np.ndarray, dx: float, dy: float) -> np.ndarray:
-    """Return ``ImageProcessor.translate(dx, dy)`` with BICUBIC interpolation.
-
-    Positive ``dx``/``dy`` move content towards larger column/row indices.
-    Integer offsets are an exact pixel shift with zero fill, as in ImageJ.
-    """
-    image = _validate_plane(plane)
-    height, width = image.shape
-    dx = float(dx)
-    dy = float(dy)
+def _translate_stack(stack: np.ndarray, dx: float, dy: float) -> np.ndarray:
+    """``ImageProcessor.translate`` applied to every plane of ``(..., H, W)``."""
+    height, width = stack.shape[-2:]
     if dx == int(dx) and dy == int(dy):
-        out = np.zeros_like(image)
+        out = np.zeros_like(stack)
         ix, iy = int(dx), int(dy)
         dst_y = slice(max(iy, 0), min(height, height + iy))
         dst_x = slice(max(ix, 0), min(width, width + ix))
         src_y = slice(max(-iy, 0), min(height, height - iy))
         src_x = slice(max(-ix, 0), min(width, width - ix))
         if dst_y.start < dst_y.stop and dst_x.start < dst_x.stop:
-            out[dst_y, dst_x] = image[src_y, src_x]
+            out[..., dst_y, dst_x] = stack[..., src_y, src_x]
         return out
-    xs = np.arange(width, dtype=np.float64) - dx
-    ys = np.arange(height, dtype=np.float64) - dy
-    return _bicubic_rows_cols(image, xs, ys)
+    return _translate_bicubic(stack, dx, dy)
+
+
+def translate_plane(plane: np.ndarray, dx: float, dy: float) -> np.ndarray:
+    """Return ``ImageProcessor.translate(dx, dy)`` with BICUBIC interpolation.
+
+    Positive ``dx``/``dy`` move content towards larger column/row indices.
+    Integer offsets are an exact pixel shift with zero fill, as in ImageJ.
+    """
+    return _translate_stack(_validate_plane(plane), float(dx), float(dy))
 
 
 def resize_rows(plane: np.ndarray, factor: int) -> np.ndarray:
@@ -161,25 +222,26 @@ def translate_volume(
     if source.ndim != 3:
         raise ValueError(f"volume must have shape (Z,Y,X), got {source.shape}")
     dz, dy, dx = (float(value) for value in translation)
+    if min(source.shape[1:]) < 2 or (dz != 0 and source.shape[0] < 2):
+        raise ValueError(
+            f"ImageJ interpolation requires planes of at least 2 x 2 pixels, "
+            f"got volume shape {source.shape}"
+        )
     result = source
     if dx != 0 or dy != 0:
-        result = np.stack([translate_plane(plane, dx, dy) for plane in result])
+        result = _translate_stack(result, dx, dy)
     if crop_yx is not None:
         y0, y1, x0, x1 = crop_yx
         result = result[:, y0:y1, x0:x1]
     if dz != 0:
+        # Axial planes are Z rows by lateral columns: (Y, Z, X) for "Top" and
+        # (X, Z, Y) for "Left"; translate all of them at once along Z.
         if axial_projection_axis == "Y":
-            planes = [
-                translate_plane(result[:, y, :], 0.0, dz)
-                for y in range(result.shape[1])
-            ]
-            result = np.stack(planes, axis=1)
+            order, inverse = (1, 0, 2), (1, 0, 2)
         elif axial_projection_axis == "X":
-            planes = [
-                translate_plane(result[:, :, x], 0.0, dz)
-                for x in range(result.shape[2])
-            ]
-            result = np.stack(planes, axis=2)
+            order, inverse = (2, 0, 1), (1, 2, 0)
         else:
             raise ValueError("axial_projection_axis must be 'X' or 'Y'")
-    return result
+        planes = np.ascontiguousarray(result.transpose(order))
+        result = _translate_stack(planes, 0.0, dz).transpose(inverse)
+    return np.ascontiguousarray(result)

@@ -80,3 +80,19 @@ def test_default_transform_is_fiji_two_pass_imagej_bicubic():
     np.testing.assert_array_equal(corrected[0], image[0])
     expected = translate_volume(image[1], shifts[1], axial_projection_axis="Y")
     np.testing.assert_allclose(corrected[1], expected, rtol=0, atol=1e-3)
+
+
+def test_imagej_integer_output_rounds_and_clips_like_imagej_16_bit():
+    # Catmull-Rom overshoots next to sharp edges; an integer output must clip
+    # to the dtype range (ImageJ's 16-bit conversion) instead of wrapping.
+    image = np.zeros((2, 3, 10, 10), dtype=np.uint16)
+    image[:, :, 4:6, 4:6] = 60000
+    shifts = [[0, 0, 0], [0, 0.5, 0.5]]
+
+    as_float = apply_drift(image, shifts, axes="TZYX")
+    as_input = apply_drift(image, shifts, axes="TZYX", output_dtype="input")
+
+    assert as_float.min() < 0
+    assert as_input.dtype == np.uint16
+    expected = np.clip(np.floor(as_float + 0.5), 0, 65535).astype(np.uint16)
+    np.testing.assert_array_equal(as_input, expected)

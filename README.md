@@ -239,5 +239,11 @@ Fast4DReg paper is:
 > datasets.** *Journal of Cell Science* 136, jcs260728 (2023).
 > https://doi.org/10.1242/jcs.260728
 
+NanoPyx is described in:
+
+> Saraiva BM et al. **Efficiently accelerated bioimage analysis with NanoPyx,
+> a Liquid Engine-powered Python framework.** *Nature Methods* 22, 283–286
+> (2025). https://doi.org/10.1038/s41592-024-02562-6
+
 See [`docs/implementation_spec.md`](docs/implementation_spec.md) for the
 algorithm mapping and [`docs/data.md`](docs/data.md) for the reference dataset.

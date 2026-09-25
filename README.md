@@ -3,72 +3,76 @@
 **Fast4DRegPy** is the Python implementation of the Fast4DReg method for
 projection-based drift correction and channel registration of 2D and 3D
 microscopy data. It uses
-[NanoPyx](https://github.com/HenriquesLab/NanoPyx) for the cross-correlation
-drift estimator, in the same architectural role that NanoJ plays in the
-original [Fast4DReg Fiji implementation](https://github.com/CellMigrationLab/Fast4DReg).
+[NanoPyx](https://github.com/HenriquesLab/NanoPyx) for cross-correlation in
+the same architectural role that NanoJ plays in the original
+[Fast4DReg Fiji implementation](https://github.com/CellMigrationLab/Fast4DReg).
 
 This project is distinct from
-[`napari-fast4dreg`](https://github.com/COSC-Lab/napari-fast4dreg), which is a
-separate Python interpretation of Fast4DReg with a napari plugin and additional
-features. The goal here is a direct, testable Python implementation of the
-original Fast4DReg workflow and algorithm, with an API suitable for scripts,
-notebooks, pipelines, and headless execution.
+[`napari-fast4dreg`](https://github.com/COSC-Lab/napari-fast4dreg), a separate
+Python interpretation of Fast4DReg with a napari plugin. The goal here is a
+direct, testable reimplementation of the original Fast4DReg workflow and
+algorithm, with an API for scripts, notebooks, pipelines and headless use.
 
-Version `0.4.1` keeps registration, transformation, axes, I/O, scalar metrics,
-and validation images in separate modules while exposing six direct
-registration functions. The major remaining Fiji-parity gap is calibrated,
-numerically validated axial (Z) registration: the current implementation
-reproduces the Fiji-style geometry-derived axial stretch/rescaling pattern,
-but exact equivalence still requires an XYZT Fiji reference fixture. This is
-documented explicitly in [`docs/parity_audit.md`](docs/parity_audit.md). The complete previous audit and fix list is in
-[`docs/code_audit_2026-08-08.md`](docs/code_audit_2026-08-08.md).
+| Name | Value |
+| --- | --- |
+| Project / repository | Fast4DRegPy |
+| Distribution | `fast4dregpy` |
+| Python import | `fast4dreg` |
 
-The package does not infer dimensions or silently change settings. Invalid
-parameters, non-finite data, unavailable backends, and existing output files
-raise descriptive exceptions.
+## Validation status
 
-## Reference datasets
+The parity target is the original Fiji macro `time_estimate+apply.ijm` (v2.1).
+What has been validated, and how:
 
-The Fast4DReg datasets and reference outputs are archived on Zenodo:
+| Evidence | Result |
+| --- | --- |
+| **Real Fiji runs.** The original macro was run headless in ImageJ 1.53t on a synthetic movie for 8 settings: default, previous + average, Left reslice, time averaging including a partial block, bounded windows, crop + extend (`tests/test_fiji_macro_parity.py`). | Drift tables agree to ≤0.004 px; corrected stacks Pearson > 0.9999 with identical geometry |
+| **ImageJ interpolation.** `translate` and `Scale` outputs from ImageJ (`tests/test_imagej_parity.py`). | Equal to float32 rounding |
+| **Published ground truth**, compact fixtures (`tests/test_zenodo_*.py`). | XY ≤0.071 px on frames 6/12/18/24; frame-6 XYZ within 0.1 px |
+| **Archived Fiji output**, frame 6 of the published movie. | Given Fiji's translation, 99.99% of voxels are bit-identical after uint16 conversion; Fast4DRegPy's own estimate is within 0.005 px of Fiji and the end-to-end Pearson is 0.9999989 |
+| **Complete published movie**, 25 frames x 69 planes (checksum-verified Zenodo data, run in GitHub Actions). | Drift within 0.11 px of the added ground truth on every frame (Fiji: same 0.11 px); within 0.005 px of Fiji's applied translations; corrected volumes Pearson ≥ 0.9999993 and SSIM ≥ 0.9999997 vs archived Fiji on all 25 frames. Report: [`docs/full_movie_validation.md`](docs/full_movie_validation.md) |
+| **Fresh Fiji run** of the original macro on the full movie, same runner. | Fiji reproduces the archive voxel for voxel; Fast4DRegPy matches Fiji's drift table within 0.005 px and its output (277 x 354) with Pearson ≥ 0.9999998. The archived file has 2 more pixels trimmed at the right/bottom edge. |
+| **Speed**, same 2-CPU runner, full movie. | Fiji 41 s; Fast4DRegPy 19.5 s (`workers=1`), 14.9 s (`workers=4`) |
+| Channel registration, other voxel geometries, Fiji "Save RAM" mode. | Not yet compared with Fiji |
 
-- **Dataset record requested for this project:** https://zenodo.org/records/6534570
-  (DOI: https://doi.org/10.5281/zenodo.6534570)
-- Zenodo currently links that record to the expanded **version 2.0** record:
-  https://zenodo.org/records/7514913
+The audit behind these results, including the defects fixed in 0.5.0, is in
+[`docs/audit_2026-09-25.md`](docs/audit_2026-09-25.md). The per-feature
+comparison is in [`docs/parity_audit.md`](docs/parity_audit.md).
 
-The archive contains synthetic-drift data, HUVEC data, channel-alignment data,
-expected/reference outputs, and the original software archive. The full
-multi-gigabyte archive is not vendored in this repository. Instead,
-`tests/data/zenodo_synthetic/large_drift_xy_max.npz` is a 1.18 MB derivative
-fixture made directly from the published
-`2.1.2-LargeDrift_original.tif`: full-field maximum-Z projections at frames
-0, 6, 12, 18, and 24. Its source member, archive checksum, extraction operation,
-selected timepoints, and fixture SHA-256 are recorded in
-`tests/data/zenodo_synthetic/manifest.json`. See
-[`docs/data.md`](docs/data.md).
+## Installation
+
+Python 3.10–3.13 (CI tests all four):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install "fast4dregpy @ git+https://github.com/CellMigrationLab/Fast4DRegPy"
+```
+
+For development:
+
+```bash
+git clone https://github.com/CellMigrationLab/Fast4DRegPy
+cd Fast4DRegPy
+python -m pip install -e ".[dev]"
+```
+
+NanoPyx is pinned to 2.1.4, the version whose correlation code has been
+validated.
 
 ## Supported inputs
 
 | Task | Expected layout | Examples |
 | --- | --- | --- |
 | Time registration | A time series with explicit `T` | `TYX`, `TZYX`, `CTZYX`, `TZCYX` |
-| Channel registration | Multiple channels, currently one timepoint | `CYX`, `CZYX` |
+| Channel registration | Multiple channels, one timepoint | `CYX`, `CZYX` |
 
-Axis strings are mandatory and must match the NumPy array dimensions. The
-library never guesses whether a stack dimension represents channels, Z, or
-time. Axis names are case-insensitive. Estimated translations are always
-stored as `(dz, dy, dx)` and mean “translation to apply.”
-
-## Installation
-
-Python 3.12 is a good default for development; CI tests Python 3.10–3.13:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[test,notebook]"
-```
+Axis strings are mandatory and must match the array dimensions. The library
+never guesses whether a stack dimension represents channels, Z or time.
+Estimated translations are always stored as `(dz, dy, dx)` and mean
+"translation to apply". This is the same quantity as the Fiji/NanoJ drift
+table.
 
 ## Time registration
 
@@ -85,7 +89,6 @@ corrected, shifts = register_time(
     reference="first",
     correct_xy=True,
     correct_z=True,
-    backend="threaded",
     workers=4,
 )
 
@@ -93,51 +96,40 @@ save_tiff("timelapse_registered.tif", corrected, axes="TZYX")
 save_drift_csv("timelapse_drift.csv", shifts)
 ```
 
-`correct_z=False` is the default so `TYX` data work without hidden dimension
-logic. Set it to `True` only for data with a real Z axis and at least two
-slices. When both corrections are enabled, XY is estimated and applied first;
-the Z projection is then calculated from the XY-corrected volumes, matching
-the Fast4DReg workflow.
-
-`backend` must be either `"threaded"` or `"unthreaded"`. The selected NanoPyx
-implementation is called directly; failures are propagated and never retried
-with another backend. Before correlation, rectangular projections are
-centre-cropped to the closest even square, matching both Fiji Fast4DReg and
-NanoPyx.
-
-Corrected arrays default to `float32` to retain subpixel interpolation.
-Translations default to cubic interpolation (`interpolation_order=3`), the
-closest SciPy analogue to Fiji Fast4DReg's explicit bicubic translation. Exact
-pixel-level equivalence to ImageJ bicubic interpolation still requires
-reference-fixture validation. Pass `output_dtype="input"` explicitly if
-preserving the input dtype is more important than avoiding integer
-quantization.
-
-When `time_averaging > 1`, the frame count must currently be exactly divisible
-by the averaging factor. NanoPyx 2.1.4 otherwise drops the trailing partial
-block, while Fiji Fast4DReg retains it; Fiji-compatible partial-block averaging
-remains a parity task.
-
-For strict Fiji parity, leave `max_expected_drift=0` (automatic search) for
-now. Fiji crops a bounded cross-correlation search radius `r` to `2r+1`
-pixels, whereas NanoPyx 2.1.4's low-level estimator currently slices `2r`
-pixels after testing the `2r+1` condition. The automatic mode is unaffected;
-bounded-window parity is tracked as a P0 issue.
-
-`workers` controls how many independent volumes are transformed concurrently.
-It defaults to `1`, so library calls never choose a concurrency level silently.
-Use `workers=4` or `workers=8` after benchmarking on the target machine. This
-setting accelerates transform application and the XY-corrected preparation used
-for Z estimation; it does not change NanoPyx's selected `backend`.
-
-On a 9-logical-CPU test system, warmed XYZ registration of a float32
-`20 x 16 x 256 x 256` stack decreased from 1.60 seconds with one worker to
-0.51 seconds with four and 0.39 seconds with eight. These are illustrative
-measurements, not performance guarantees. Run the included benchmark locally:
-
-```bash
-python benchmarks/benchmark_transforms.py --workers 1 2 4 8
-```
+- **Order of operations (as in Fiji):** XY drift is estimated from a Z
+  projection and applied; the axial projection (over Y for
+  `axial_projection_axis="Y"` = Fiji "Top", over X for `"X"` = "Left") is then
+  built from the XY-corrected stack and stretched by Fiji's integer factor
+  `round(lateral/axial)`; the Z drift is estimated and divided by that factor.
+  Like Fiji, the stretch factor comes from pixel geometry, not from voxel
+  calibration. `correct_z=False` is the default.
+- **Interpolation.** The default `interpolation="imagej"` reproduces Fiji
+  exactly: ImageJ bicubic (Catmull-Rom) translation of every Z plane and then
+  every axial plane, with zero fill outside the image. `interpolation="scipy"`
+  (with `interpolation_order` and `cval`) uses a single SciPy spline shift
+  instead; it does not match Fiji voxel for voxel.
+- **Output.** float32 by default, as Fiji with "Save RAM" off.
+  `output_dtype="input"` rounds half-up and clips once.
+- **Cropping and Z extension** are off by default. `crop_output=True`
+  reproduces Fiji's "Crop output", including its effect on Z estimation, since
+  Fiji crops before building the axial projection. `extend_z=True` reproduces
+  "Extend stack to fit". `fiji_crop_bounds()` and `fiji_z_padding()` return
+  the same rectangle and padding for other uses.
+- **Time averaging** (`time_averaging > 1`) follows NanoJ: blocks of frames,
+  the trailing partial block kept, each block compared with the raw first
+  frame, and linear interpolation of the block drift. At least two blocks are
+  required.
+- **Bounded search** (`max_expected_drift = r > 0`) uses Fiji's centred
+  `2r+1` correlation window. When the correlation peak reaches the edge of the
+  window, Fiji writes NaN or a clamped value; Fast4DRegPy raises `ValueError`
+  instead. For Z the radius is in stretched axial pixels, as in Fiji.
+  `max_expected_drift=0` (automatic) searches the whole image.
+- **Shared XY/Z settings.** Fiji exposes projection, reference, averaging and
+  maximum drift separately for XY and Z; Fast4DRegPy currently uses one value
+  for both.
+- `backend` (`"threaded"` or `"unthreaded"`) selects the NanoPyx
+  DriftEstimator implementation. It is called directly and never retried with
+  another backend.
 
 For multichannel time series, supply `CTZYX` (or another explicit ordering)
 and choose `reference_channel`. The estimated transform is applied identically
@@ -145,106 +137,88 @@ to every channel at each timepoint.
 
 ## Channel registration
 
-All channels must be combined into a single `CYX` or `CZYX` array:
-
 ```python
 from fast4dreg import register_channels
 
 corrected, shifts = register_channels(
-    image,
-    axes="CZYX",
-    reference_channel=0,
-    projection="max",
-    correct_z=True,
+    image, axes="CZYX", reference_channel=0, projection="max", correct_z=True
 )
 ```
 
-Separate `XYZ` channel files must be combined into one `XYZC` or `CZYX`
-hyperstack before channel registration. A set of separate files has no channel
-axis, so the library rejects it instead of interpreting Z slices as channels.
+Separate channel files must be combined into one `CZYX` array first.
 
-## Notebook app
+## Performance and reproducibility
 
-Open `notebooks/Fast4DRegApp.ipynb`. The notebook is deliberately thin: it
-loads a TIFF, calls the package API, plots the drift, and saves TIFF/CSV output.
-For time registration it can also calculate the paper's validation metrics
-before and after correction. Registration logic must remain in
-`src/fast4dreg`.
+On the same 2-CPU runner, the original Fiji macro took 41 s on the full
+published movie; Fast4DRegPy took 19.5 s (`workers=1`) and 14.9 s
+(`workers=4`) for the same settings and result.
 
-## Registration validation
+`workers` controls how many volumes are transformed concurrently. It defaults
+to `1` and is never inferred. On a 4-CPU container, the full published
+geometry (25 x 69 x 416 x 416) registers in 64 s with `workers=1` and 22.5 s
+with `workers=4` ([`docs/performance.md`](docs/performance.md)). Transform
+results are identical for any worker count.
 
-The validation API reproduces the methods used in the Fast4DReg paper:
+NanoPyx 2.1.4's OpenMP reductions make drift estimates differ by ~0.001 px
+between runs when more than one OpenMP thread is used. Set
+`OMP_NUM_THREADS=1` for bit-reproducible estimates.
 
-- mSSIM, PSNR, Pearson correlation, and the archived notebook's historical
-  value labelled NRMSE;
-- a conventional Euclidean NRMSE reported separately;
-- temporal standard-deviation projections using ImageJ's sample-standard-
-  deviation convention;
-- blue/green/red three-frame overlays, line profiles, kymographs, and the
-  paper's mean-signal/mean-background SNR definition.
+## Registration validation metrics
+
+`fast4dreg.validation` reproduces the paper's assessment: mSSIM, PSNR,
+Pearson correlation, the archived notebook's value labelled NRMSE (kept as
+`paper_nrmse`, which is `sqrt(mean(abs(error)))`), a conventional
+`standard_nrmse`, temporal standard-deviation projections (ImageJ `n-1`),
+three-frame overlays, line profiles, kymographs and the paper's SNR.
 
 ```python
 from fast4dreg import evaluate_registration, save_validation_csv
 
-rows = evaluate_registration(
-    corrected,
-    axes="TZYX",
-    reference="first",       # use "previous" for adjacent-frame comparison
-    analysis="slice",
-    z_index=8,
-)
+rows = evaluate_registration(corrected, axes="TZYX", reference="first",
+                             analysis="slice", z_index=8)
 save_validation_csv("registration_validation.csv", rows)
 ```
 
-`paper_nrmse` exactly preserves the archived assessment notebook's
-`sqrt(mean(abs(error)))` calculation. It is not the standard NRMSE definition;
-use `standard_nrmse` for new reporting.
+## Reference data and validation tooling
+
+The Fast4DReg data are archived on Zenodo (record
+[6534570](https://zenodo.org/records/6534570); expanded version
+[7514913](https://zenodo.org/records/7514913), CC BY 4.0). Compact fixtures
+derived from them are committed with their provenance, see
+[`docs/data.md`](docs/data.md). Two further validation tools live in
+[`validation/`](validation/README.md):
+
+- a headless runner for the original Fiji macro, used to generate the
+  real-Fiji fixtures;
+- a full-movie validation that downloads the published movie (pinned
+  checksum), registers all frames and writes CSV/JSON/PNG results. It is
+  available as the manually dispatched **full-movie validation** workflow.
 
 ## Development
 
 ```bash
-python -m ruff check src tests benchmarks
+python -m ruff check src tests benchmarks validation
 python -m pytest -q
 ```
 
-The integration tests call NanoPyx 2.1.4 on known XYZ translations and on a
-compact fixture derived directly from the published Fast4DReg large-drift
-Zenodo dataset. They must not be mocked or silently skipped when NanoPyx is
-unavailable.
-
-All save functions refuse to overwrite existing files by default. Pass
-`overwrite=True` deliberately when replacement is intended.
+The tests call the real NanoPyx 2.1.4; do not mock it or skip integration
+tests. Save functions refuse to overwrite existing files unless
+`overwrite=True`.
 
 ## Current non-goals
 
-- True 3D correlation
-- Rotation correction
-- Dask or Zarr processing
-- GPU selection
-- Non-rigid registration
-- A napari plugin or desktop installer (see the separate `napari-fast4dreg` project)
-
-These should only be considered after comparison with reference outputs from
-the original Fast4DReg Fiji macros.
-
-See `docs/parity_audit.md` for the complete comparison and `CODEX_TASKS.md` for
-the prioritized implementation backlog.
+True 3D correlation, rotation correction, Dask/Zarr, GPU selection, non-rigid
+registration, and a napari plugin or desktop installer (see
+`napari-fast4dreg`).
 
 ## Citation
 
-If you use Fast4DRegPy, cite the original Fast4DReg publication and the
-NanoPyx/NanoJ work that provides the underlying registration engine. The
-Fast4DReg paper is:
+If you use Fast4DRegPy, cite the Fast4DReg paper and NanoPyx/NanoJ:
 
 > Pylvänäinen JW et al. **Fast4DReg – fast registration of 4D microscopy
 > datasets.** *Journal of Cell Science* 136, jcs260728 (2023).
 > https://doi.org/10.1242/jcs.260728
 
-NanoPyx is described in:
-
 > Saraiva BM et al. **Efficiently accelerated bioimage analysis with NanoPyx,
 > a Liquid Engine-powered Python framework.** *Nature Methods* 22, 283–286
 > (2025). https://doi.org/10.1038/s41592-024-02562-6
-
-See [`docs/implementation_spec.md`](docs/implementation_spec.md) for the
-algorithm mapping and [`docs/data.md`](docs/data.md) for the reference dataset.

@@ -12,3 +12,5 @@ dist/
 *_registered.tif
 *_drift.csv
 *_validation_*.csv
+.validation-data/
+validation-results/

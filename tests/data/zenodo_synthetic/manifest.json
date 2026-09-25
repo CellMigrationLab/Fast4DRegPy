@@ -51,5 +51,6 @@
       -137.609,
       -14.8706
     ]
-  ]
+  ],
+  "published_drift_convention": "Drift_generator.ijm copies frame 0 unchanged and adds (x,y,z)=published[t] to frame t>=1; the published frame-0 value was never applied. Translation to apply = -published[t], 0 for frame 0."
 }

@@ -1,0 +1,28 @@
+{
+  "source": "GitHub Actions run 36154740383, commit 600f7a3, ubuntu-latest (2 CPUs), OMP_NUM_THREADS=1",
+  "dataset": "Zenodo 7514913, 2-Synthetic-drift-dataset.zip (MD5 27e3623f58d23d7c50674edc9432fe1b), 2.1.2-LargeDrift_original.tif, 25 x 69 x 416 x 416 uint16",
+  "fiji": {
+    "implementation": "time_estimate+apply.ijm v2.1 (Fast4DReg 0483ace), ImageJ 1.53t, Fast4DReg/NanoJ plugin compiled from source, Xvfb, -Xmx12g",
+    "settings": "XY and Z: Max Intensity, first frame, time averaging 1, max drift 0; Top reslice; Crop output on; Extend off; Save RAM off",
+    "macro_reported_seconds": 41.0,
+    "wall_seconds_including_jvm_start": 44.73,
+    "peak_java_rss_gb": 4.97,
+    "output_shape": [25, 69, 277, 354],
+    "output_dtype": "float32"
+  },
+  "fast4dregpy": {
+    "settings": "register_time-equivalent: projection=max, reference=first, correct_z=True, axial_projection_axis=Y, crop_output=True, interpolation=imagej",
+    "workers_1": {"estimate_seconds": 10.24, "apply_seconds": 9.22, "total_seconds": 19.46},
+    "workers_4": {"estimate_seconds": 7.37, "apply_seconds": 7.49, "total_seconds": 14.86},
+    "serial_equals_parallel": true,
+    "output_shape": [25, 69, 277, 354]
+  },
+  "parity": {
+    "max_abs_fast4dregpy_minus_fiji_drift_table_dzdydx": [0.00223, 0.00470, 0.00392],
+    "mean_abs_fast4dregpy_minus_fiji_drift_table_dzdydx": [0.00071, 0.00221, 0.00120],
+    "fast4dregpy_vs_fresh_fiji_output_pearson_min_over_frames": 0.99999977,
+    "fresh_fiji_vs_archived_pearson_min_over_frames": 0.99999947,
+    "fresh_fiji_vs_archived_identical_voxels_after_uint16_in_common_region": 1.0,
+    "archived_shape": [25, 69, 275, 352]
+  }
+}

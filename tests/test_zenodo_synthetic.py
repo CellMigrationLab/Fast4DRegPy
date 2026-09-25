@@ -44,7 +44,6 @@ def test_published_large_drift_xy_is_recovered_and_corrected():
         correct_xy=True,
         correct_z=False,
         max_expected_drift=0,
-        interpolation_order=3,
         workers=2,
     )
 
@@ -55,14 +54,17 @@ def test_published_large_drift_xy_is_recovered_and_corrected():
     assert published.shape == (len(time_indices), 3)
 
     # Fig. S1A reports the actual stochastic drift added to each archived frame.
-    # Fast4DRegPy stores translations to apply relative to the first frame, so
-    # subtract the first published drift and invert the XY signs.
-    expected_dx = -(published[:, 0] - published[0, 0])
-    expected_dy = -(published[:, 1] - published[0, 1])
+    # Drift_generator.ijm leaves frame 0 untouched, so the translation to apply
+    # to frame t is -published[t] (0 for frame 0); the published frame-0 value
+    # is noise that was never applied. Fast4DRegPy stores (dz,dy,dx).
+    expected_dx = -published[:, 0]
+    expected_dy = -published[:, 1]
+    expected_dx[0] = expected_dy[0] = 0
 
     np.testing.assert_allclose(shifts[:, 0], 0, atol=0)
-    np.testing.assert_allclose(shifts[:, 2], expected_dx, atol=1.5)
-    np.testing.assert_allclose(shifts[:, 1], expected_dy, atol=1.5)
+    # Measured maximum error on these five frames: 0.071 px.
+    np.testing.assert_allclose(shifts[:, 2], expected_dx, atol=0.1)
+    np.testing.assert_allclose(shifts[:, 1], expected_dy, atol=0.1)
 
     # Ignore the border region affected by the largest synthetic translation.
     margin = 80

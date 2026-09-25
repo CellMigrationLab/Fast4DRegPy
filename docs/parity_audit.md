@@ -1,60 +1,73 @@
 # Fast4DReg parity audit
 
-Audit date: 2026-08-08
+Audit date: 2026-09-25 (supersedes 2026-08-08). Full findings:
+[`audit_2026-09-25.md`](audit_2026-09-25.md). Full-movie results:
+[`full_movie_validation.md`](full_movie_validation.md).
 
 ## Sources checked
 
-- [Fast4DReg paper](https://doi.org/10.1242/jcs.260728), especially the
-  Algorithms, Metrics, synthetic-drift, noise, and acquired-data sections.
-- [Original repository at commit 0483ace](https://github.com/CellMigrationLab/Fast4DReg/tree/0483ace1ac5b8ee0e3938d00c303104109897803).
-- Fiji macros `time_estimate+apply.ijm`, `time_apply.ijm`,
-  `channel_estimate+apply.ijm`, and `channel_apply.ijm`.
-- Archived `scripts/registration_assesment_notebook.ipynb` and
-  `scripts/Drift_generator.ijm`.
-- ImageJ `ZProjector.StandardDeviation`, which uses sample standard deviation
-  (`n - 1`).
+- Fast4DReg repository at commit `0483ace`: macros `time_estimate+apply.ijm`
+  (v2.1) and its v1 predecessor (commit `f1571de`, June 2022), the Java
+  plugin (`DriftEstimation_`, `CrossCorrelationMap`, `NJ_FHT`,
+  `EstimateShiftAndTilt`, `ApplyDriftCorrection`), `Drift_generator.ijm`.
+- ImageJ 1.53t (`ImageProcessor.translate`, `getBicubicInterpolatedPixel`,
+  `FloatProcessor.resize`, `resizeLinearly`, `Scaler`).
+- NanoPyx 2.1.4 (`_le_drift_calculator.pyx`, `ccm.pyx`,
+  `ccm_helper_functions.pyx`, `estimate_shift.py`), recovered from the
+  published sdist.
+- The original Fiji macro **executed** headless on synthetic data
+  (`validation/fiji/`), and the archived Fiji output of the published movie.
+
+## Levels of evidence
+
+| Level | Meaning |
+| --- | --- |
+| **Fiji-run** | matches output written by the original Fiji macro/ImageJ in this repository's fixtures |
+| **Archive** | matches the archived Fiji output of the published movie |
+| **Truth** | matches the drift actually added by the published generator |
+| **Synthetic** | matches known mathematical shifts only |
+| **Untested** | no evidence |
 
 ## Functional comparison
 
-| Capability | Python 0.4 status | Important difference or evidence |
+| Capability | Status | Evidence |
 | --- | --- | --- |
-| XYT/XYZT time registration | Implemented | Explicit axes are required instead of inferred ImageJ dimensions. |
-| XYC/XYZC channel registration | Implemented | Channels are compared to a selectable reference channel. |
-| Maximum and average projections | Implemented | One shared projection setting is currently used for XY and Z. |
-| First-frame and previous-frame references | Implemented | One shared reference setting is currently used for XY and Z. |
-| Time averaging | Implemented with strict bounds | Values NanoPyx would silently clamp, or that cannot support its cubic interpolation, are rejected. Fiji equivalence is not yet proven. |
-| Maximum expected drift | **Partial** | `0 = auto` is supported and is the parity-safe default. For nonzero radius `r`, Fiji uses a `2r+1` CCM crop while NanoPyx 2.1.4 currently slices `2r`; bounded-window parity is not yet exact. |
-| NanoPyx backend | Explicit CPU backend | `threaded` or `unthreaded` is called directly; LiquidEngine fallback dispatch is bypassed. |
-| Subpixel translation | Implemented | NanoPyx estimation plus SciPy cubic interpolation by default; Fiji uses ImageJ bicubic, so exact pixel parity remains untested. |
-| Sequential XY correction then Z estimation | Implemented | A regression test verifies that the axial projection is generated from the XY-corrected volume. Fiji fixture parity is still required. |
-| Axial reslice scaling | **Validated on one published XYZT case** | The current geometry-derived axial stretch and post-estimation Z rescaling recover the published XYZ displacement within 0.75 pixels and produce corrected pixels with Pearson >0.98 against the archived Fiji Fast4DReg output for frames 0 and 6 of the large-drift dataset. Broader calibration/interpolation parity remains to be tested. |
-| Independent XY/Z settings | Missing | Fiji exposes projection, averaging, reference, and maximum drift separately for XY and Z. |
-| Crop black borders | Missing | Fiji crops using extrema from the XY drift table. |
-| Extend Z stack to fit | Missing | Fiji pads Z using extrema from the Z drift table. |
-| RAM-saving/virtual-stack mode | Missing | Current API materializes NumPy arrays in memory; this remains deferred until parity fixtures pass. |
-| Fiji settings CSV | Missing | Python saves a portable drift CSV but no complete run manifest. |
-| NanoJ NJT drift-table compatibility | Missing | Signs, column names, and round-trip compatibility require Fiji fixtures. |
-| Drift plots | Partial | Notebook displays a plot but the API does not save publication-ready plots. |
-| Batch file processing | Missing | The array API can be called in a loop; no batch runner or result-folder convention exists. |
-| Bio-Formats input and metadata | Missing | TIFF is supported; OME metadata and arbitrary microscopy formats are not preserved. |
-| Headless use | Implemented | The Python API is directly callable without the notebook. |
-| mSSIM, PSNR, PCC | Implemented | Pair normalization and metric parameters match the archived notebook. |
-| Historical paper NRMSE | Implemented as `paper_nrmse` | The archived code uses `sqrt(mean(abs(error)))`, not conventional NRMSE. |
-| Conventional NRMSE | Implemented as `standard_nrmse` | Added to avoid perpetuating the historical label. |
-| Temporal standard-deviation projection | Implemented | Uses `ddof=1`, matching ImageJ. |
-| Three-frame color overlay | Implemented | Blue, green, then red, as described in the paper. |
-| Line profiles and kymographs | Implemented | Available as array-returning validation helpers. |
-| Paper SNR definition | Implemented | Mean signal divided by mean background using supplied masks. |
-| Synthetic drift/noise generator | Missing | Original uses quadratic XYZ drift, optional drift noise, background homogenization, and Poisson noise. |
-| Reference regression dataset | **XY + XYZT Fiji fixtures implemented** | The 1.18 MB XY fixture checks the published lateral drift trend. A second ~28.1 MB XYZT fixture uses frames 0 and 6 from the same raw dataset plus the archived `2.2.1-LargeDrift_F4DReg.tif` output to test XYZ shifts and corrected-pixel agreement directly. |
-| True 3D correlation, rotation, shear, scaling | Deliberately deferred | The paper describes translation-only projection registration; current project scope remains projection-only. |
+| XY estimation, max/average projection, first/previous reference | Implemented | Fiji-run: <=0.004 px on all macro cases; Archive: <=0.005 px from Fiji's applied translations on all 25 frames; Truth: <=0.081 px (Fiji <=0.076 px) |
+| Z estimation, Top (Y) and Left (X) reslice | Implemented | Fiji-run: <=0.004 px; Archive: <=0.0021 px on all 25 frames; Truth: <=0.110 px (Fiji 0.110 px) |
+| Axial stretch factor | `round(width/height)` from pixel geometry, as Fiji | Fiji-run; Fiji does not use voxel calibration |
+| Time averaging, including a trailing partial block | Implemented with NanoJ semantics | Fiji-run: <=0.0015 px (blocks of 3 and 5 of 12 frames) |
+| Bounded search (`max_expected_drift`) | Fiji's centred `2r+1` window; refuses when the peak reaches the window edge | Fiji-run: identical to automatic search inside the bound; Fiji writes NaN/clamps at the edge |
+| Z search bound | In stretched axial pixels (Fiji semantics) | Fiji-run |
+| Final transform | ImageJ bicubic (Catmull-Rom) two-pass, zero fill (default); SciPy spline optional | Fiji-run and Archive: 99.99% of voxels identical given Fiji's translation; full movie Pearson >= 0.9999993 per frame |
+| Crop output | `crop_output=True`, Fiji rectangle, applied before Z estimation | Fiji-run (crop + extend case); the archived movie is cropped 2 px smaller than the formula predicts (unexplained) |
+| Extend stack to fit | `extend_z=True` | Fiji-run |
+| Output dtype | float32 default (Fiji "Save RAM" off); `output_dtype="input"` rounds once | Archive (32-bit then one uint16 conversion) |
+| Save RAM (16-bit per-pass rounding) | Not implemented | — |
+| Independent XY/Z settings | Missing (shared) | — |
+| Channel registration | Implemented; selectable reference channel (Fiji: channel 1) | Synthetic only |
+| Multichannel time series | Reference channel estimated, applied to all channels | Synthetic only |
+| NanoJ `.njt` drift-table I/O | Missing (format documented in `validation/fiji/`) | — |
+| Settings manifest, drift plots, batch runner | Missing | — |
+| Bio-Formats / OME metadata | Missing; TIFF only | — |
+| Validation metrics (mSSIM, PSNR, PCC, paper NRMSE) | Implemented | archived notebook formulae |
+
+## Known differences
+
+- NanoPyx's Nelder-Mead and NanoJ's ImageJ Minimizer find the subpixel CCM
+  peak with different optimisers; measured differences are <=0.004 px.
+- NanoPyx 2.1.4 OpenMP reductions are not bit-reproducible across runs with
+  more than one OpenMP thread (~0.001 px). Use `OMP_NUM_THREADS=1` when
+  bit-reproducibility matters.
+- Fast4DRegPy refuses a bounded search whose peak reaches the window edge and
+  averaging with fewer than two blocks; Fiji returns NaN/clamped or zero drift.
+- XY and Z settings are shared.
 
 ## Scientific interpretation
 
-Fast4DRegPy is the Python implementation of Fast4DReg. Sequential XY-then-Z
-estimation, the paper's validation measurements, and one direct published XYZT
-comparison against archived Fiji Fast4DReg output are now covered by regression
-tests. The current axial path is therefore supported by direct parity evidence
-for that case, but bounded drift-window semantics, broader voxel-calibration
-coverage, interpolation-edge behaviour, cropping/extension, and full drift-table
-compatibility remain open parity tasks.
+Where a setting is implemented, Fast4DRegPy reproduces the Fiji algorithm,
+not just its outcome: drift tables agree with real Fiji runs to a few
+thousandths of a pixel, and given the same translation the corrected voxels
+are bit-identical after Fiji's uint16 conversion. The published-movie
+comparison (`full_movie_validation.md`) confirms this on all 25 frames and
+69 planes. Channel registration, Save RAM mode and voxel geometries other than
+the published movie and the synthetic fixtures remain untested against Fiji.

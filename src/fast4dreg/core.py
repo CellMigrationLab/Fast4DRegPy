@@ -21,12 +21,20 @@ def register_time(
     time_averaging: int = 1,
     max_expected_drift: int = 0,
     backend: str = "threaded",
-    interpolation_order: int = 3,
+    interpolation: str = "imagej",
+    interpolation_order: int | None = None,
     cval: float = 0.0,
+    crop_output: bool = False,
+    extend_z: bool = False,
     output_dtype: str = "float32",
     workers: int = 1,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Estimate and apply time drift, returning ``(corrected, shifts)``."""
+    """Estimate and apply time drift, returning ``(corrected, shifts)``.
+
+    ``crop_output`` and ``extend_z`` correspond to Fiji Fast4DReg's "Crop
+    output" and "Extend stack to fit"; both are off by default. Cropping also
+    affects Z estimation exactly as in Fiji (see :func:`estimate_time_drift`).
+    """
     shifts = estimate_time_drift(
         image,
         axes=axes,
@@ -40,13 +48,18 @@ def register_time(
         max_expected_drift=max_expected_drift,
         backend=backend,
         workers=workers,
+        crop_output=crop_output,
     )
     corrected = apply_drift(
         image,
         shifts,
         axes=axes,
+        interpolation=interpolation,
         interpolation_order=interpolation_order,
         cval=cval,
+        axial_projection_axis=axial_projection_axis,
+        crop_output=crop_output,
+        extend_z=extend_z,
         output_dtype=output_dtype,
         workers=workers,
     )
@@ -64,7 +77,8 @@ def register_channels(
     axial_projection_axis: str = "Y",
     max_expected_drift: int = 0,
     backend: str = "threaded",
-    interpolation_order: int = 3,
+    interpolation: str = "imagej",
+    interpolation_order: int | None = None,
     cval: float = 0.0,
     output_dtype: str = "float32",
     workers: int = 1,
@@ -86,8 +100,10 @@ def register_channels(
         image,
         shifts,
         axes=axes,
+        interpolation=interpolation,
         interpolation_order=interpolation_order,
         cval=cval,
+        axial_projection_axis=axial_projection_axis,
         output_dtype=output_dtype,
         workers=workers,
     )

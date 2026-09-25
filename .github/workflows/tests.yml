@@ -27,6 +27,33 @@ jobs:
       - run: python -c "import nanopyx; print(nanopyx.__version__)"
       - run: python -m pytest -q
       - if: matrix.python-version == '3.12'
-        run: python -m ruff check src tests benchmarks
-      - if: matrix.python-version == '3.12'
-        run: python -m build
+        run: python -m ruff check src tests benchmarks validation
+
+  distribution:
+    # Build the sdist and wheel, install the wheel into a clean environment and
+    # run the test suite shipped in the sdist against it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - name: Check wheel contents
+        run: |
+          python - <<'PY'
+          import pathlib, zipfile
+          wheel, = pathlib.Path("dist").glob("*.whl")
+          names = zipfile.ZipFile(wheel).namelist()
+          assert not [n for n in names if n.startswith(("tests/", "validation/"))], names
+          assert not [n for n in names if n.endswith((".npz", ".tif", ".tiff"))], names
+          print("\n".join(names))
+          PY
+      - name: Test the sdist against the installed wheel
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/python -m pip install dist/*.whl pytest
+          mkdir /tmp/sdist && tar xzf dist/*.tar.gz -C /tmp/sdist
+          cd /tmp/sdist/fast4dregpy-* && rm -rf src
+          /tmp/clean/bin/python -m pytest -q

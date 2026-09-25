@@ -103,4 +103,4 @@ registration and validation tests must run against NumPy and lazy inputs.
 - GPU-selection framework.
 
 These may be proposed later, but must not be mixed into parity work for the
-Fast4DReg Python parity work.
+Fast4DRegPy parity work.

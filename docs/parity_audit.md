@@ -51,7 +51,7 @@ Audit date: 2026-08-08
 
 ## Scientific interpretation
 
-The Python package is the Fast4DReg Python implementation, but it is not yet
+Fast4DRegPy is the Python implementation of Fast4DReg, but it is not yet
 numerically verified to reproduce every Fiji implementation detail. Sequential XY-then-Z estimation and the
 paper's validation measurements are implemented. Axial physical scaling,
 transform details, and drift-table parity remain unproven until the P0 Fiji

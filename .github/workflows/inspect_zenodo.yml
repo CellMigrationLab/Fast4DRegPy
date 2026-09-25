@@ -11,15 +11,39 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: python -m pip install --quiet remotezip requests
-      - name: List synthetic archive
+      - run: python -m pip install --quiet remotezip requests tifffile
+      - name: Inspect record and TIFF metadata
         run: |
           python - <<'PY'
+          import io, json, requests, tifffile
           from remotezip import RemoteZip
+
+          record = requests.get("https://zenodo.org/api/records/7514913", timeout=60)
+          record.raise_for_status()
+          data = record.json()
+          print("LICENSE:", json.dumps(data.get("metadata", {}).get("rights") or data.get("metadata", {}).get("license"), indent=2))
+          print("TITLE:", data.get("metadata", {}).get("title"))
+
           url = "https://zenodo.org/records/7514913/files/2-Synthetic-drift-dataset.zip?download=1"
+          names = [
+              "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.2-LargeDrift_original.tif",
+              "2-Synthetic-drift-dataset/2.2-Synthetic-drift-expected-results/2.2.1-LargeDrift_F4DReg.tif",
+              "2-Synthetic-drift-dataset/2.1-Synthetic-drift-files/2.1.1-noDrift_original.tif",
+          ]
           with RemoteZip(url) as archive:
-              infos = sorted(archive.infolist(), key=lambda x: x.file_size)
-              print("filename\tbytes\tcompressed")
-              for info in infos:
-                  print(f"{info.filename}\t{info.file_size}\t{info.compress_size}")
+              for name in names:
+                  print("\nFILE:", name)
+                  with archive.open(name) as zf:
+                      print("seekable:", zf.seekable())
+                      try:
+                          with tifffile.TiffFile(zf) as tif:
+                              for i, series in enumerate(tif.series):
+                                  print("series", i, "shape", series.shape, "axes", series.axes, "dtype", series.dtype)
+                              print("pages", len(tif.pages))
+                              page = tif.pages[0]
+                              print("page0", page.shape, page.dtype)
+                              arr = page.asarray()
+                              print("page0 stats", float(arr.min()), float(arr.max()), float(arr.mean()))
+                      except Exception as exc:
+                          print("TIFF ERROR:", type(exc).__name__, repr(exc))
           PY

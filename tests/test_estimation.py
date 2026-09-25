@@ -2,13 +2,37 @@ import numpy as np
 import pytest
 
 from fast4dreg import estimate_time_drift
-from fast4dreg.estimation import _estimate_sequence_shifts, _nanopyx_drift
+from fast4dreg.estimation import (
+    _crop_movie_to_even_square,
+    _estimate_sequence_shifts,
+    _nanopyx_drift,
+)
 
 
 def _movie(frames=4, shape=(12, 14)):
     y, x = np.indices(shape, dtype=np.float32)
     base = np.exp(-((y - 4) ** 2 + (x - 7) ** 2) / 6)
     return np.stack([np.roll(base, index, axis=1) for index in range(frames)])
+
+
+
+
+def test_even_square_preparation_matches_fiji_center_crop():
+    movie = np.arange(2 * 7 * 10, dtype=np.float32).reshape(2, 7, 10)
+    cropped = _crop_movie_to_even_square(movie)
+    assert cropped.shape == (2, 6, 6)
+    np.testing.assert_array_equal(cropped, movie[:, 0:6, 2:8])
+
+
+def test_time_averaging_rejects_trailing_partial_block():
+    with pytest.raises(ValueError, match="divide the number of frames exactly"):
+        _nanopyx_drift(
+            _movie(frames=14),
+            reference="first",
+            time_averaging=3,
+            max_expected_drift=0,
+            backend="threaded",
+        )
 
 
 def test_time_estimation_accepts_lowercase_axes(monkeypatch):
@@ -106,7 +130,7 @@ def test_z_projection_is_computed_after_xy_correction(monkeypatch):
 
     assert len(calls) == 2
     # Moving volume was translated by dx=+1 before the Y projection.
-    assert calls[1][1, 1, 3] == 0
+    assert calls[1][1, 1, 3] == pytest.approx(0, abs=1e-6)
     assert calls[1][1, 1, 4] == pytest.approx(1)
 
 

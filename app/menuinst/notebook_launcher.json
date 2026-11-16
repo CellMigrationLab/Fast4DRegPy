@@ -15,7 +15,7 @@
       ],
       "platforms": {
         "win": {
-          "icon": "",
+          "icon": "BASE_PATH_KEYWORD/Fast4DRegPy/fast4dregpy.ico",
           "command": [
             "{{ PYTHON }}",
             "{{ PREFIX }}/Fast4DRegPy/launch_jupyter.py",
@@ -25,10 +25,10 @@
           ]
         },
         "linux": {
-          "icon": ""
+          "icon": "BASE_PATH_KEYWORD/Fast4DRegPy/fast4dregpy.png"
         },
         "osx": {
-          "icon": ""
+          "icon": "BASE_PATH_KEYWORD/Fast4DRegPy/fast4dregpy.icns"
         }
       }
     }

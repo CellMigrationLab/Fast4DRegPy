@@ -14,3 +14,4 @@ hosts:
 distribution:
   installer: true
   pip: fast4dregpy
+icon: app/logo/fast4dregpy.png

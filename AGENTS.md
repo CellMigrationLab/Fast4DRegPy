@@ -4,8 +4,9 @@ Fast4DRegPy reimplements the Fiji plugin
 [Fast4DReg](https://github.com/CellMigrationLab/Fast4DReg) in Python, with
 NanoPyx doing the cross-correlation that NanoJ does in Fiji. **Fiji is the
 reference:** a change is correct when it matches what the original Fiji macro
-does, not when it looks more elegant. User documentation:
-`README.md`, `docs/fiji_compatibility.md`, `docs/validation.md`.
+does, not when it looks more elegant. User documentation: `README.md` and
+`docs/` (start at `docs/index.md`); keep `docs/workflow.md` and
+`docs/python.md` in step with the API and the notebook.
 
 ## Setup and checks
 

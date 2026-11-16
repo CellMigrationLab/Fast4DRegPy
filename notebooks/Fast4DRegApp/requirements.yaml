@@ -1,0 +1,14 @@
+dependencies:
+- nanopyx==2.1.4
+- numpy==2.5.5
+- scipy==1.18.1
+- scikit-image==0.26.0
+- tifffile==2026.11.12
+- matplotlib==3.11.2
+- ipywidgets==8.1.9
+- pandas==3.1.1
+description: "Fast4DRegPy: correct drift in 2D and 3D time-lapse images and align channels, with the projection-based workflow of Fiji's Fast4DReg."
+linux_dependencies: []
+macos_dependencies: []
+python_version: "3.12"
+windows_dependencies: []

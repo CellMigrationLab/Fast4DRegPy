@@ -44,6 +44,10 @@ Fiji above 0.99999.
 | `tests/test_zenodo_*.py` | extracts of the published movie and its Fiji result |
 | `validation/full_movie/` | full-movie data loading, reference fitting, metrics, reporting and CLI |
 | `validation/fiji/` | Fiji runner and fixture-generation tools |
+| `src/fast4dreg_lc_tools/` | the napari / Fiji tools of the app: only call the public API |
+| `lc_tests/`, `tests/test_lc_tools.py` | the tool cases (also used by LabConstrictor's napari and Fiji checks) and their accuracy test |
+| `notebooks/Fast4DRegApp/` | the app's notebook and the pinned environment of the app (`requirements.yaml`) |
+| `app/`, `.tools/`, `.template_sync/`, `construct.yaml`, `environment.yaml`, `setup.py`, `requirements*.txt` | LabConstrictor template files that build the installers; changed by the template-sync pull requests, not by hand (`setup.py` is the exception: see its docstring) |
 
 ## Conventions that must not change
 
@@ -82,6 +86,15 @@ Fiji above 0.99999.
 - **Test data that looks convenient but is not equivalent.** The XYZT
   extract is cropped in Y, so XY drift must come from the full-field extract.
   Do not replace published or Fiji-generated fixtures with regenerated data.
+
+## Releases
+
+`version` in `pyproject.toml` must equal the release tag before a release is
+published (the PyPI step stops otherwise). Keep `requires-python` and the
+dependencies in `pyproject.toml`; `setup.py` deliberately has neither (they
+would override `pyproject.toml` on PyPI). The app's pinned environment is
+`notebooks/Fast4DRegApp/requirements.yaml`; the tools' tables need `pandas`
+there.
 
 ## Rules
 
@@ -130,4 +143,5 @@ limited to what is needed to run without a screen (`patch_macro.py`).
    tests pass for them.
 
 Out of scope unless agreed first: true 3D correlation; rotation, scaling or
-non-rigid registration; a GUI or napari plugin; GPU selection.
+non-rigid registration; a GUI beyond the notebook and the napari / Fiji tools;
+GPU selection.

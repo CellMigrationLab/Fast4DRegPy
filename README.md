@@ -16,7 +16,23 @@ comparison, including per-frame errors and difference images, is in
 
 ## Installation
 
-Fast4DRegPy supports Python 3.10–3.13.
+There are two ways to get Fast4DRegPy.
+
+**As an app, without installing Python.** Each
+[release](https://github.com/CellMigrationLab/Fast4DRegPy/releases) has
+installers for Windows, macOS and Linux, built with
+[LabConstrictor](https://cellmigrationlab.github.io/LabConstrictor-Site/). The
+app opens the Fast4DRegPy notebook in JupyterLab and adds two tools to napari
+and Fiji (below).
+
+**As a Python package.** Fast4DRegPy supports Python 3.10–3.13. Once a
+release is published on PyPI:
+
+```bash
+python -m pip install fast4dregpy
+```
+
+From GitHub (also the development version):
 
 ```bash
 python -m pip install "fast4dregpy @ git+https://github.com/CellMigrationLab/Fast4DRegPy"
@@ -119,12 +135,33 @@ signal-to-background ratios.
 
 ## Notebook
 
-`notebooks/Fast4DRegApp.ipynb` is a small interface for loading a TIFF,
+`notebooks/Fast4DRegApp/Fast4DRegApp.ipynb` is a small interface for loading a TIFF,
 running registration, viewing the drift and saving the outputs.
 
 ```bash
 python -m pip install "fast4dregpy[notebook] @ git+https://github.com/CellMigrationLab/Fast4DRegPy"
 ```
+
+## In napari and Fiji
+
+With the app installed, and the LabConstrictor
+[napari plugin](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/napari/) or
+[Fiji plugin](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/fiji/)
+installed once on the computer, two tools appear in napari and Fiji:
+
+- **Correct drift (time-lapse)**: `register_time` on the open image, with the
+  corrected movie and the drift table as results.
+- **Align channels**: `register_channels`, with the aligned image and the
+  shift of each channel.
+
+They run in the app's own Python, so napari and Fiji need nothing else. Give
+the **Axes** of the image: Fast4DRegPy never guesses them. Fiji sends a
+hyperstack in the order T Z C Y X without the dimensions of size 1 (a 3D
+time-lapse is `TZYX`); a napari layer usually is `TYX` or `TZYX`. In Fiji, a
+corrected stack with several dimensions opens as one stack: use
+*Image > Hyperstacks > Stack to Hyperstack* to get the sliders back.
+
+The tools are declared in `src/fast4dreg_lc_tools/` and tested in `lc_tests/`.
 
 ## Validation and performance
 
@@ -166,3 +203,26 @@ If you use Fast4DRegPy, please cite Fast4DReg and NanoPyx:
 
 Fast4DRegPy is released under the MIT license. See
 [CHANGELOG.md](CHANGELOG.md) for release notes.
+
+The app's tools need `labconstrictor-tools`; see `lc_tests/README.md`.
+
+## Releases
+
+A GitHub release builds the installers and, once publishing is switched on,
+the package on PyPI, with the version of the release tag. Before publishing
+release `vX.Y.Z`, set `version = "X.Y.Z"` in `pyproject.toml`: the PyPI step
+stops, without uploading anything, when the two differ. The release workflow
+writes the same version into `setup.py`, which the installers use.
+
+To switch publishing on (once): on pypi.org, add a pending trusted publisher
+for this repository with the workflow `publish_pypi.yml` and the environment
+`pypi`, then add the repository variable `PYPI_PUBLISH` = `true`. The steps
+are in `.tools/docs/external_code_upload.md`.
+
+The files that build the app (`app/`, `.tools/`, `.template_sync/`,
+`construct.yaml`, `environment.yaml`, `setup.py`, `requirements*.txt`,
+`labconstrictor-app.yaml`) come from the
+[LabConstrictor template](https://github.com/CellMigrationLab/LabConstrictor)
+and are kept up to date by its weekly template-sync pull request. The app's
+Python environment is pinned in
+`notebooks/Fast4DRegApp/requirements.yaml`.

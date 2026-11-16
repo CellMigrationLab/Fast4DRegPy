@@ -52,4 +52,17 @@ __all__ = [
     "temporal_standard_deviation",
 ]
 
-__version__ = "0.5.0"
+def _installed_version() -> str:
+    """The version of the installed distribution: ``fast4dregpy`` from PyPI, or
+    ``fast4dreg`` as the LabConstrictor installer installs it from setup.py."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    for distribution in ("fast4dregpy", "fast4dreg"):
+        try:
+            return version(distribution)
+        except PackageNotFoundError:
+            continue
+    return "0+unknown"
+
+
+__version__ = _installed_version()

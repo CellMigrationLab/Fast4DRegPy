@@ -1,5 +1,7 @@
 # Fiji compatibility
 
+[⬅️ Documentation index](index.md)
+
 Fast4DRegPy follows the registration sequence in the Fiji Fast4DReg
 `time_estimate+apply.ijm` macro and uses ImageJ-compatible interpolation for
 the default transform path.

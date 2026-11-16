@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Fast4DRegPy is also a LabConstrictor app: each release builds installers
+  for Windows, macOS and Linux that open the notebook
+  (`notebooks/Fast4DRegApp/Fast4DRegApp.ipynb`) and add the tools
+  **Correct drift (time-lapse)** and **Align channels** to napari and Fiji
+  (`src/fast4dreg_lc_tools/`, tested in `lc_tests/` and
+  `tests/test_lc_tools.py`). Releases can also publish `fast4dregpy` on PyPI.
+- `fast4dreg.__version__` is read from the installed package metadata.
+- The notebook offers every Fast4DReg setting (time averaging, maximum
+  expected drift, crop output, extend Z, reslice, output type) and its install
+  cell works in Google Colab.
+- New documentation in `docs/`: installation, step-by-step workflow with every
+  setting, napari and Fiji, Python guide, troubleshooting, development and
+  releases; timings against the Fiji macro in `docs/validation.md`.
 - Split drift estimation, translation helpers and full-movie validation into
   smaller modules without changing the default registration algorithm.
 - `backend="unthreaded"` now raises an explicit error when used with

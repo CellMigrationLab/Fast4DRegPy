@@ -8,3 +8,8 @@ recursive-include tests/data *.npz *.json *.md
 # so the sdist test suite is self-contained.
 prune tests/data/zenodo_xyzt
 exclude tests/test_zenodo_xyzt.py
+
+# The source distribution of the app's Python package (setup.py, src/, README.md, LICENSE) also carries requirements.txt:
+# setup.py reads the dependencies from it when pip builds the package from the source distribution.
+include requirements.txt
+include lc_tests/make_fixtures.py

@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://cellmigrationlab.github.io/LabConstrictor-Site/schema/labconstrictor-app.schema.json
+schema: 1
+name: Fast4DRegPy
+summary: 'Correct drift in 2D and 3D time-lapse microscopy and align channels: the Python version of Fiji''s Fast4DReg.'
+description: |-
+  Fast4DRegPy measures and corrects drift in 2D and 3D time-lapse images, and aligns the channels of multichannel images. It follows the projection-based workflow of the Fiji tool Fast4DReg and uses NanoPyx for the cross-correlation.
+
+  On the published Fast4DReg test movie, its drift table differs from Fiji's by less than 0.005 pixels on every axis.
+kind: analysis
+hosts:
+- notebook
+- napari
+- fiji
+distribution:
+  installer: true
+  pip: fast4dregpy
+icon: app/logo/fast4dregpy.png

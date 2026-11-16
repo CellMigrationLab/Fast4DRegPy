@@ -1,168 +1,170 @@
+<div align="center">
+
+<img src="docs/assets/Fast4DReg-logo.png" alt="Fast4DReg logo" width="160"/>
+
 # Fast4DRegPy
 
-Fast4DRegPy is the Python implementation of
-[Fast4DReg](https://github.com/CellMigrationLab/Fast4DReg), the Fiji tool for
-correcting drift in 2D and 3D time-lapse microscopy and aligning channels in
-multichannel images. It follows the same projection-based workflow and uses
-[NanoPyx](https://github.com/HenriquesLab/NanoPyx) for cross-correlation, in
-the role NanoJ has in the Fiji implementation.
+**Drift correction for 2D and 3D time-lapse microscopy, and channel alignment, in Python.**
+*The projection-based workflow of the Fiji tool Fast4DReg, as a Python package, a desktop app and tools for napari and Fiji.*
 
-The implementation has been checked against the complete published Fast4DReg
-synthetic movie. Across all 25 timepoints, its drift table differs from a fresh
-Fiji Fast4DReg run by at most 0.0047 pixels on any axis. The lowest whole-volume
-Pearson correlation between the two corrected outputs is 0.9999993. The full
-comparison, including per-frame errors and difference images, is in
-[docs/validation.md](docs/validation.md).
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Paper](https://img.shields.io/badge/paper-J%20Cell%20Sci%202023-blue)](https://doi.org/10.1242/jcs.260728)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CellMigrationLab/Fast4DRegPy/blob/main/notebooks/Fast4DRegApp/Fast4DRegApp.ipynb)
+[![LabConstrictor app](https://img.shields.io/badge/app-LabConstrictor-orange)](https://cellmigrationlab.github.io/LabConstrictor-Site/)
 
-## Installation
+</div>
 
-Fast4DRegPy supports Python 3.10–3.13.
+---
+
+## What is Fast4DRegPy?
+
+Long time-lapse acquisitions drift: the stage moves, the focus creeps, the
+sample settles. Fast4DRegPy measures that drift and removes it, in X, Y and Z,
+for 2D and 3D movies. It also aligns the channels of multichannel images,
+which helps with microscopes whose channels are offset from each other.
+
+It is the Python version of [Fast4DReg](https://github.com/CellMigrationLab/Fast4DReg),
+the Fiji tool, and follows the same steps: it makes intensity projections,
+measures the shift between them by cross-correlation (with
+[NanoPyx](https://github.com/HenriquesLab/NanoPyx), in the role NanoJ has in
+Fiji) and translates each frame by that shift.
+
+![Fast4DReg pipeline](docs/assets/Fast4DReg-methodDescription.png)
+
+*The Fast4DReg pipeline. XY drift is measured on projections over Z and
+corrected first; Z drift is then measured on side projections of the
+XY-corrected movie. Figure from the
+[Fast4DReg repository](https://github.com/CellMigrationLab/Fast4DReg).*
+
+**Same results as Fiji.** On the complete published Fast4DReg test movie
+(25 timepoints, 69 slices, 416 × 416 pixels), the drift found by Fast4DRegPy
+differs from a fresh Fiji Fast4DReg run by at most 0.005 pixels on any axis,
+and the corrected movies have a correlation of 0.9999993. See
+[the validation](docs/validation.md).
+
+---
+
+## Quickstart
+
+Choose how you want to use it:
+
+### 🖥️ Desktop app (no Python needed)
+
+Download the installer for Windows, macOS or Linux from the
+[latest release](https://github.com/CellMigrationLab/Fast4DRegPy/releases).
+The app opens the Fast4DRegPy notebook in JupyterLab: choose a file, set the
+options, press **Run registration**. How to install and open an app:
+[Install an app](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/install/) and
+[Open and use an app](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/using-apps/).
+
+### 🔬 In napari or Fiji
+
+The app adds two tools to napari and Fiji, **Correct drift (time-lapse)** and
+**Align channels**, which work on the image you have open. Install the app,
+then the LabConstrictor plugin once:
+[napari](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/napari/) or
+[Fiji](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/fiji/).
+How to use them: [napari and Fiji](docs/napari_fiji.md).
+
+### 🌐 In the browser
+
+Run the notebook in Google Colab, nothing to install:
+[Open in Colab](https://colab.research.google.com/github/CellMigrationLab/Fast4DRegPy/blob/main/notebooks/Fast4DRegApp/Fast4DRegApp.ipynb).
+
+### 🐍 In Python
 
 ```bash
 python -m pip install "fast4dregpy @ git+https://github.com/CellMigrationLab/Fast4DRegPy"
 ```
 
-The distribution is called `fast4dregpy`; the Python package is imported as
-`fast4dreg`.
-
-## Drift correction
-
 ```python
 from fast4dreg import load_tiff, register_time, save_drift_csv, save_tiff
 
-image = load_tiff("timelapse.tif")  # here: T, Z, Y, X
-
-corrected, shifts = register_time(
-    image,
-    axes="TZYX",
-    correct_xy=True,
-    correct_z=True,
-    workers=4,
-)
-
+image = load_tiff("timelapse.tif")                  # here: T, Z, Y, X
+corrected, shifts = register_time(image, axes="TZYX", correct_xy=True, correct_z=True)
 save_tiff("timelapse_registered.tif", corrected, axes="TZYX")
-save_drift_csv("timelapse_drift.csv", shifts)
+save_drift_csv("timelapse_drift.csv", shifts)        # dz, dy, dx per timepoint
 ```
 
-The `axes` string is required. It tells Fast4DRegPy what each array dimension
-means, for example `"TYX"`, `"TZYX"` or `"CTZYX"`. Dimensions are never
-guessed from shape.
+More in [the Python guide](docs/python.md). Once a release is on PyPI,
+`python -m pip install fast4dregpy` works too.
 
-`shifts` has one row per timepoint. Values are the translation applied to the
-frame, in `(dz, dy, dx)` pixel order. With multichannel time series, drift is
-measured on `reference_channel` and the same translation is applied to every
-channel.
+---
 
-For 3D data Fast4DRegPy follows the Fiji sequence: measure XY drift, correct
-XY, build the axial projection from that corrected stack, then measure Z drift.
+## Key capabilities
 
-### Registration options
+* **2D and 3D time-lapse drift correction**, in XY, in Z, or both.
+* **Channel alignment** of 2D and 3D multichannel images.
+* **The Fast4DReg settings:** projection (max or mean), reference frame (first
+  or previous), time averaging, maximum expected drift, crop output, extend
+  stack in Z. [How they map to the Fiji dialog](docs/fiji_compatibility.md).
+* **Registration quality:** mSSIM, PSNR, Pearson correlation and NRMSE as in
+  the Fast4DReg paper, temporal colour overlays and kymographs.
+* **Drift tables** as CSV files, one row per timepoint or channel.
+* **Fast:** on the published test movie, half the time of the Fiji macro with
+  4 workers on the same computer ([timings](docs/validation.md#speed)).
 
-| Parameter | Default | Meaning |
-| --- | --- | --- |
-| `correct_xy`, `correct_z` | `True`, `False` | choose which drift components to correct |
-| `projection` | `"max"` | `"max"` or `"mean"` projection |
-| `reference` | `"first"` | compare with the first or previous frame |
-| `time_averaging` | `1` | average frames in blocks before estimation |
-| `max_expected_drift` | `0` | search radius in pixels; 0 uses the full correlation map |
-| `axial_projection_axis` | `"Y"` | Fiji Top (`"Y"`) or Left (`"X"`) reslice |
-| `crop_output` | `False` | crop to the region present in every frame |
-| `extend_z` | `False` | pad Z before applying Z translations |
-| `interpolation` | `"imagej"` | ImageJ-compatible bicubic; `"scipy"` is also available |
-| `output_dtype` | `"float32"` | return float32 or explicitly round to the input dtype |
-| `backend` | `"threaded"` | NanoPyx estimator backend for the direct estimation path |
-| `workers` | `1` | number of independent volumes transformed concurrently |
+---
 
-The `unthreaded` NanoPyx backend is available when
-`time_averaging=1` and `max_expected_drift=0`. Fiji-compatible time
-averaging and bounded searches use NanoPyx's compiled correlation primitives
-directly, so requesting `backend="unthreaded"` with either of those modes
-raises an error rather than silently ignoring the setting.
+## ⚠️ Three things to get right
 
-Fiji exposes separate XY and Z values for projection, reference, averaging and
-search radius. Fast4DRegPy currently uses one value for both. See
-[docs/fiji_compatibility.md](docs/fiji_compatibility.md) for the exact mapping
-and the remaining differences.
+1. **Say what each dimension is.** Fast4DRegPy never guesses the axes of an
+   image from its shape: you give them (`TYX`, `TZYX`, `CZYX`...). A wrong
+   axes string is refused with the image's shape.
+2. **One timepoint for channel alignment; one channel's drift for all.**
+   Channel alignment works on a single timepoint. For a multichannel
+   time-lapse, the drift is measured on the reference channel and the same
+   correction is applied to every channel.
+3. **Z drift needs enough slices.** Z drift is measured on side projections of
+   the stack. On stacks of about 10 slices or fewer it may not be found at
+   all; check the `dz` column of the drift table.
 
-## Channel alignment
+More in [Troubleshooting](docs/troubleshooting.md).
 
-```python
-from fast4dreg import register_channels
+---
 
-corrected, shifts = register_channels(
-    image,
-    axes="CZYX",
-    reference_channel=0,
-    correct_z=True,
-)
-```
+## Documentation
 
-All channels must be in one array with a `C` axis. Channel-shift estimation
-expects a single timepoint.
+**Start here**
+* [Documentation index](docs/index.md)
+* [Installation](docs/installation.md)
+* [Step-by-step workflow and every setting](docs/workflow.md)
 
-## Registration quality
+**Use it**
+* [napari and Fiji](docs/napari_fiji.md)
+* [Python guide](docs/python.md)
+* [Troubleshooting and known issues](docs/troubleshooting.md)
 
-The package includes the measurements used in the Fast4DReg paper:
+**How it compares with Fiji**
+* [Fiji compatibility](docs/fiji_compatibility.md)
+* [Validation and speed](docs/validation.md)
 
-```python
-from fast4dreg import evaluate_registration, save_validation_csv
+**Develop**
+* [Development and releases](docs/development.md)
 
-rows = evaluate_registration(corrected, axes="TZYX", analysis="max")
-save_validation_csv("registration_quality.csv", rows)
-```
-
-`evaluate_registration` reports mSSIM, PSNR, Pearson correlation, the
-historical NRMSE calculation used in the paper, and a conventional NRMSE under
-a separate name. Image-based helpers include temporal standard-deviation
-projections, three-frame overlays, line profiles, kymographs and
-signal-to-background ratios.
-
-## Notebook
-
-`notebooks/Fast4DRegApp.ipynb` is a small interface for loading a TIFF,
-running registration, viewing the drift and saving the outputs.
-
-```bash
-python -m pip install "fast4dregpy[notebook] @ git+https://github.com/CellMigrationLab/Fast4DRegPy"
-```
-
-## Validation and performance
-
-The published large-drift movie contains 25 timepoints, 69 Z planes and
-416 × 416 pixels per plane. Fast4DRegPy has been compared frame by frame with
-both the known synthetic drift and a fresh run of the original Fiji macro;
-see [docs/validation.md](docs/validation.md).
-
-On the 2-CPU GitHub Actions runner used for the recorded timing comparison,
-Fast4DRegPy took 19.5 s with one transform worker and 14.9 s with four. The
-Fiji macro reported 41 s on the same runner. These numbers describe that run,
-not a general speed guarantee.
-
-## Development
-
-```bash
-git clone https://github.com/CellMigrationLab/Fast4DRegPy
-cd Fast4DRegPy
-python -m pip install -e ".[dev]"
-python -m ruff check src tests benchmarks validation
-python -m pytest -q
-```
-
-The normal test suite runs on Python 3.10–3.13. The full published-movie
-comparison is intentionally separate because it downloads a 1.5 GB archive;
-instructions are in [validation/README.md](validation/README.md).
+---
 
 ## Citation
 
-If you use Fast4DRegPy, please cite Fast4DReg and NanoPyx:
+If you use Fast4DRegPy, please cite Fast4DReg, NanoJ and NanoPyx:
 
-> Pylvänäinen JW et al. **Fast4DReg – fast registration of 4D microscopy
-> datasets.** *Journal of Cell Science* 136, jcs260728 (2023).
+> Pylvänäinen JW, Laine RF, Saraiva BMS, Ghimire S, Follain G, Henriques R,
+> Jacquemet G. **Fast4DReg – fast registration of 4D microscopy datasets.**
+> *Journal of Cell Science* 136 (4), jcs260728 (2023).
 > https://doi.org/10.1242/jcs.260728
+
+> Laine RF, Tosheva KL, Gustafsson N, et al. **NanoJ: a high-performance
+> open-source super-resolution microscopy toolbox.** *Journal of Physics D:
+> Applied Physics* 52 (16), 163001 (2019). https://doi.org/10.1088/1361-6463/ab0261
 
 > Saraiva BM et al. **Efficiently accelerated bioimage analysis with NanoPyx,
 > a Liquid Engine-powered Python framework.** *Nature Methods* 22, 283–286
 > (2025). https://doi.org/10.1038/s41592-024-02562-6
 
-Fast4DRegPy is released under the MIT license. See
-[CHANGELOG.md](CHANGELOG.md) for release notes.
+The desktop app and the napari and Fiji tools are built with
+[LabConstrictor](https://cellmigrationlab.github.io/LabConstrictor-Site/).
+
+Fast4DRegPy is released under the [MIT license](LICENSE). The Fast4DReg logo
+and pipeline figure come from the
+[Fast4DReg repository](https://github.com/CellMigrationLab/Fast4DReg) (MIT).
+Release notes: [CHANGELOG.md](CHANGELOG.md).

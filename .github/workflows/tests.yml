@@ -24,8 +24,21 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
+      # The tools for napari and Fiji (src/fast4dreg_lc_tools) need labconstrictor-tools, and pandas for their tables:
+      # the version the app installer pins (LC_TOOLS_PIN in app/bash_bat_scripts/post_install.sh).
+      - name: Install labconstrictor-tools as the app installer does
+        run: |
+          pin=$(sed -n 's/^ *LC_TOOLS_PIN="\(.*\)"$/\1/p' app/bash_bat_scripts/post_install.sh)
+          echo "labconstrictor-tools $pin"
+          python -m pip install pandas "https://github.com/CellMigrationLab/LabConstrictor-Tools/archive/refs/tags/${pin}.zip"
       - run: python -c "import nanopyx; print(nanopyx.__version__)"
       - run: python -m pytest -q
+      - name: Tool cases (the cases the napari and Fiji checks use)
+        working-directory: lc_tests
+        run: |
+          python make_fixtures.py fixtures
+          labconstrictor-tools check --module fast4dreg_lc_tools
+          labconstrictor-tools test --module fast4dreg_lc_tools --cases cases.json
       - if: matrix.python-version == '3.12'
         run: python -m ruff check src tests benchmarks validation
 

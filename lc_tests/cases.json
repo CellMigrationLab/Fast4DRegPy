@@ -1,0 +1,37 @@
+[
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/drift_tyx.tif", "axes": "TYX"},
+   "comment": "2D time-lapse: the corrected movie and one drift row per timepoint",
+   "expect": {"max_seconds": 120, "progress_events_min": 1, "results": {
+     "registered": {"shape": [5, 80, 96], "dtype": "float32"},
+     "drift": {"columns": ["timepoint", "dz", "dy", "dx"], "rows": 5, "cells": {"dz[0]": 0.0, "dy[0]": 0.0, "dx[0]": 0.0}}}}},
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/drift_tzyx.tif", "axes": "TZYX", "correct_z": true},
+   "comment": "3D time-lapse with Z drift",
+   "expect": {"max_seconds": 180, "results": {
+     "registered": {"shape": [4, 20, 64, 72], "dtype": "float32"},
+     "drift": {"columns": ["timepoint", "dz", "dy", "dx"], "rows": 4}}}},
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/drift_tyx.tif", "axes": "TYX", "output_dtype": "input"},
+   "comment": "rounded back to the type of the image",
+   "expect": {"max_seconds": 120, "results": {"registered": {"shape": [5, 80, 96], "dtype": "uint16"}}}},
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/drift_tzyx.tif", "axes": "TYX"},
+   "comment": "axes that do not fit the image are refused with its shape",
+   "expect": {"status": "FAILED", "code": "bad_axes", "message_contains": "(4, 20, 64, 72)"}},
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/drift_tyx.tif", "axes": "TYX", "correct_z": true},
+   "comment": "Z correction without a Z axis is refused, never skipped",
+   "expect": {"status": "FAILED", "code": "bad_axes", "message_contains": "Z axis"}},
+  {"tool": "correct_drift", "inputs": {"image": "fixtures/channels_cyx.tif", "axes": "CYX"},
+   "comment": "a time-lapse tool needs a T axis",
+   "expect": {"status": "FAILED", "code": "bad_axes", "message_contains": "T axis"}},
+  {"tool": "align_channels", "inputs": {"image": "fixtures/channels_cyx.tif", "axes": "CYX"},
+   "comment": "2D channels aligned on channel 0",
+   "expect": {"max_seconds": 120, "progress_events_min": 1, "results": {
+     "aligned": {"shape": [3, 80, 96], "dtype": "float32"},
+     "channel_shifts": {"columns": ["channel", "dz", "dy", "dx"], "rows": 3, "cells": {"dy[0]": 0.0, "dx[0]": 0.0}}}}},
+  {"tool": "align_channels", "inputs": {"image": "fixtures/channels_zcyx.tif", "axes": "ZCYX", "correct_z": true},
+   "comment": "a 3D composite in Fiji's order Z C Y X",
+   "expect": {"max_seconds": 180, "results": {
+     "aligned": {"shape": [20, 2, 64, 72], "dtype": "float32"},
+     "channel_shifts": {"columns": ["channel", "dz", "dy", "dx"], "rows": 2}}}},
+  {"tool": "align_channels", "inputs": {"image": "fixtures/channels_cyx.tif", "axes": "CYX", "reference_channel": 5},
+   "comment": "a reference channel the image does not have is refused",
+   "expect": {"status": "FAILED", "code": "invalid_settings"}}
+]

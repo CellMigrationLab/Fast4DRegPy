@@ -38,6 +38,11 @@ def fixtures(tmp_path_factory):
     return folder
 
 
+def image_of(result):
+    """The array of an image result (returned with its axes when Tools has WithAxes)."""
+    return getattr(result, "array", result)
+
+
 def table_shifts(table, index_name):
     assert list(table) == [index_name, "dz", "dy", "dx"]
     assert table[index_name] == list(range(len(table["dz"])))
@@ -51,6 +56,7 @@ def table_shifts(table, index_name):
 def test_correct_drift_finds_the_known_drift(fixtures, name, axes, correct_z):
     image = tifffile.imread(fixtures / name)
     corrected, table = tools.correct_drift(image, axes=axes, correct_z=correct_z)
+    corrected = image_of(corrected)
     assert corrected.shape == image.shape
     assert corrected.dtype == np.float32
     shifts = table_shifts(table, "timepoint")
@@ -64,6 +70,7 @@ def test_correct_drift_finds_the_known_drift(fixtures, name, axes, correct_z):
 def test_align_channels_finds_the_known_shifts(fixtures, name, axes, correct_z):
     image = tifffile.imread(fixtures / name)
     aligned, table = tools.align_channels(image, axes=axes, correct_z=correct_z)
+    aligned = image_of(aligned)
     assert aligned.shape == image.shape
     shifts = table_shifts(table, "channel")
     np.testing.assert_allclose(shifts, make_fixtures.KNOWN[name], atol=TOLERANCE_PX)
@@ -108,3 +115,24 @@ def test_a_setting_fast4dregpy_refuses_is_a_tool_error(fixtures):
     with pytest.raises(ToolError) as caught:
         tools.align_channels(image, axes="CYX", reference_channel=5)
     assert caught.value.code == "invalid_settings"
+
+
+@pytest.mark.parametrize(
+    ("tool", "name", "axes"),
+    [
+        (tools.correct_drift, "drift_tzyx.tif", "TZYX"),
+        (tools.align_channels, "channels_zcyx.tif", "ZCYX"),
+    ],
+)
+def test_the_image_result_carries_the_input_axes(fixtures, tool, name, axes):
+    """With Tools 0.3.0a4 or later, Fiji opens the result as a hyperstack: the tool
+    returns it with the axes the person gave (normalised), in the same order."""
+    import labconstrictor_tools
+
+    if not hasattr(labconstrictor_tools, "WithAxes"):
+        pytest.skip("labconstrictor-tools before 0.3.0a4 has no WithAxes")
+    image = tifffile.imread(fixtures / name)
+    result, _ = tool(image, axes=axes.lower())
+    assert isinstance(result, labconstrictor_tools.WithAxes)
+    assert result.axes == axes
+    assert result.array.shape == image.shape

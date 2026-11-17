@@ -73,6 +73,17 @@ def _axes(image, axes: str, needs: str) -> str:
     return normalized
 
 
+def _with_axes(array, axes: str):
+    """The corrected image with its axes (the same as the input's), so Fiji opens a
+    time-lapse or a stack with its dimensions. Tools before 0.3.0a4 has no WithAxes:
+    the array is then returned as it is, and Fiji shows one long stack."""
+    try:
+        from labconstrictor_tools import WithAxes
+    except ImportError:
+        return array
+    return WithAxes(array, axes)
+
+
 def _shift_table(shifts, index_name: str) -> dict:
     """The (dz, dy, dx) translation applied to each timepoint or channel, in px.
 
@@ -196,7 +207,7 @@ def correct_drift(
         )
     except ValueError as error:  # a setting the image does not allow, or a failed fit
         raise ToolError("invalid_settings", str(error)) from error
-    return corrected, _shift_table(shifts, "timepoint")
+    return _with_axes(corrected, normalized), _shift_table(shifts, "timepoint")
 
 
 @tool("Align channels")
@@ -280,4 +291,4 @@ def align_channels(
         )
     except ValueError as error:
         raise ToolError("invalid_settings", str(error)) from error
-    return aligned, _shift_table(shifts, "channel")
+    return _with_axes(aligned, normalized), _shift_table(shifts, "channel")

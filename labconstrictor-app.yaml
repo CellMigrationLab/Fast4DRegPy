@@ -15,3 +15,29 @@ distribution:
   installer: true
   pip: fast4dregpy
 icon: app/logo/fast4dregpy.png
+license: MIT
+status: Available
+doi: 10.1242/jcs.260728
+docs_url: https://github.com/CellMigrationLab/Fast4DRegPy/blob/main/docs/index.md
+categories: [registration, drift correction]
+inputs:
+  - "2D or 3D time-lapse (TYX, TZYX, TCYX, TZCYX) as TIFF, or the open napari layer or Fiji image"
+  - "Multichannel image (CYX or ZCYX) for channel alignment"
+  - "The axes of the image, given explicitly (never guessed)"
+outputs:
+  - "The drift-corrected movie or aligned image (TIFF, float32 or the input type)"
+  - "A drift table: the translation (dz, dy, dx) applied to each timepoint or channel, in pixels"
+limitations:
+  - "Translations only: no rotation, scaling or non-rigid deformation"
+  - "Z drift needs enough slices; on about 10 or fewer it is underestimated, as in Fiji Fast4DReg"
+  - "The whole movie is held in memory"
+quickstart:
+  - "Install the app, then open its notebook from the app menu (or use the napari or Fiji tools)"
+  - "Choose your movie and give its axes, for example TZYX"
+  - "Choose what to correct (XY, Z) and run; check the drift table and plots"
+  - "Save the corrected movie and the drift table"
+screenshots:
+  - path: docs/assets/napari_correct_drift.png
+    caption: "Correct drift in napari on the published Fast4DReg large-drift movie, with the drift table"
+  - path: docs/assets/fiji_align_channels.png
+    caption: "Align channels in Fiji on the published calibration slide: raw, aligned and the shift of each channel"

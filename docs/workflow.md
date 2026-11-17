@@ -68,9 +68,23 @@ Fiji saves hyperstacks in the order T, Z, C, Y, X and leaves out the
 dimensions of size 1. If the axes do not match the image, Fast4DRegPy stops
 and tells you the image's shape.
 
-**Z drift needs enough slices.** On stacks of about 10 slices or fewer, Z drift
-may not be found at all (the `dz` column stays near 0). With 20 slices or
-more it is measured reliably.
+**Z drift needs enough slices.** Z drift is measured on a side view of the
+stack (Z against X), stretched to a square and cross-correlated. On a thin
+stack that view is only a few rows tall: its top and bottom edges and its
+brightness profile along Z do not move with the drift, and a drift of one or
+two slices replaces a large part of it. The estimate is then pulled towards
+zero. On stacks of about 10 slices or fewer, Z drift is underestimated: by a
+quarter to a half for sharp, scattered structures, down to almost zero for
+smooth texture. With about 20 slices it is measured correctly. The original
+Fiji Fast4DReg gives exactly the same numbers on such stacks; this is a
+property of the method, not of the Python version. If you need Z correction,
+acquire more slices, and check the `dz` column of the drift table.
+
+| Test movie, true Z drift 0, 1, 2, 1 slices | Fiji Fast4DReg | Fast4DRegPy |
+|---|---|---|
+| Smooth texture, 10 slices | 0, 0.02, 0.03, 0.02 | 0, 0.02, 0.03, 0.02 |
+| Beads, 10 slices | 0, 0.74, 1.65, 0.74 | 0, 0.74, 1.65, 0.74 |
+| Smooth texture, 20 slices | 0, 0.99, 1.99, 0.99 | 0, 0.99, 1.99, 0.99 |
 
 ## Running it in the notebook
 

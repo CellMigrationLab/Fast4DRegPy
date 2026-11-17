@@ -15,7 +15,8 @@ labconstrictor-tools test  --module fast4dreg_lc_tools --cases cases.json
 `make_fixtures.py` writes four small images cut out of one random scene at
 known whole-pixel offsets (Y and X sizes differ, so an axis swap shows):
 a 2D and a 3D time-lapse, and a 2D and a 3D multichannel image. The 3D
-images have 20 slices: with about 10, Fast4DRegPy does not measure the Z drift.
+images have 20 slices: on 10, the Z drift of this smooth scene is measured
+as almost zero (by Fiji Fast4DReg too).
 
 `cases.json` runs each tool on them and checks what the hosts rely on: the
 shape and type of the corrected image, the columns and rows of the drift

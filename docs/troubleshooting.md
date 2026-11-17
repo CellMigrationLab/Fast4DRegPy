@@ -39,10 +39,12 @@ settings.
 Try the `mean` projection (better for noisy images), time averaging, or a
 maximum expected drift a little above the real drift.
 
-**The Z drift stays at 0 although the sample moves in Z.** The stack may have
-too few slices: on about 10 slices or fewer, Z drift may not be measured. With
-20 slices or more it is. Check that Z correction is ticked and that the axes
-put Z where it is in the file.
+**The Z drift is too small, or stays near 0, although the sample moves in Z.**
+The stack may have too few slices: on about 10 slices or fewer, Z drift is
+underestimated, down to almost zero for smooth images (Fiji Fast4DReg does the
+same; see [Before you start](workflow.md#before-you-start)). With about 20
+slices it is measured correctly. Also check that Z correction is ticked and
+that the axes put Z where it is in the file.
 
 **The corrected movie still drifts slowly (live samples).** Compare with the
 previous frame (`reference: previous`) instead of the first.

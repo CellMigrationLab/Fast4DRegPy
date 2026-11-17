@@ -115,9 +115,10 @@ More in [the Python guide](docs/python.md). Once a release is on PyPI,
    Channel alignment works on a single timepoint. For a multichannel
    time-lapse, the drift is measured on the reference channel and the same
    correction is applied to every channel.
-3. **Z drift needs enough slices.** Z drift is measured on side projections of
-   the stack. On stacks of about 10 slices or fewer it may not be found at
-   all; check the `dz` column of the drift table.
+3. **Z drift needs enough slices.** Z drift is measured on a side view of the
+   stack. On stacks of about 10 slices or fewer it is underestimated, down to
+   almost zero for smooth, textured images; the original Fiji Fast4DReg gives
+   the same numbers. Check the `dz` column of the drift table.
 
 More in [Troubleshooting](docs/troubleshooting.md).
 

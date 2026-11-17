@@ -62,7 +62,7 @@ def write(folder: Path) -> None:
         metadata={"axes": "TYX"},
     )
 
-    volume = scene((38, 96, 104), seed=2)  # 20 slices: Z drift is not measured on ~10
+    volume = scene((38, 96, 104), seed=2)  # 20 slices: Z is underestimated on ~10
     frames = [cut(volume, o, (20, 64, 72)) for o in TIME_Z_OFFSETS]
     tifffile.imwrite(
         folder / "drift_tzyx.tif",

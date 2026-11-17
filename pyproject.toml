@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "fast4dregpy"
 # Before each release, set this to the version of the release tag (v0.6.0 -> "0.6.0"): the release publishes the
 # package on PyPI with this version and stops, without uploading, if it differs from the tag.
-version = "0.5.0"
+version = "0.6.0"
 description = "Python implementation of Fast4DReg using NanoPyx for projection-based microscopy registration"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
+
+The first release with installers, and the first on PyPI.
 
 - Fast4DRegPy is also a LabConstrictor app: each release builds installers
   for Windows, macOS and Linux that open the notebook
@@ -15,6 +17,9 @@
 - New documentation in `docs/`: installation, step-by-step workflow with every
   setting, napari and Fiji, Python guide, troubleshooting, development and
   releases; timings against the Fiji macro in `docs/validation.md`.
+- In Fiji, the corrected time-lapse and the aligned channels open as a
+  hyperstack with their time points, slices and channels (LabConstrictor-Tools
+  0.3.0a4, template 0.1.34).
 - Split drift estimation, translation helpers and full-movie validation into
   smaller modules without changing the default registration algorithm.
 - `backend="unthreaded"` now raises an explicit error when used with

@@ -14,4 +14,5 @@ hosts:
 distribution:
   installer: true
   pip: fast4dregpy
+doi: 10.1242/jcs.260728   # Fast4DReg, the method this app ports (NanoPyx and NanoJ: see README)
 icon: app/logo/fast4dregpy.png

@@ -39,9 +39,10 @@ each program can do with the tools of an app:
 
 ![Correct drift in napari](assets/napari_correct_drift.png)
 
-*Correct drift (time-lapse) in napari: the form on the right, the corrected
-movie, and the drift table with one row per timepoint (translation applied, in
-pixels).*
+*Correct drift (time-lapse) in napari on the published Fast4DReg large-drift
+movie (25 timepoints × 69 slices, XY and Z correction): the form on the right,
+the corrected movie, and the drift table with one row per timepoint
+(translation applied, in pixels).*
 
 ## In Fiji
 
@@ -57,13 +58,21 @@ pixels).*
 
 ![The Correct drift form in Fiji](assets/fiji_correct_drift_form.png)
 
-*The form of Correct drift (time-lapse) in Fiji. Advanced settings are at the
-bottom.*
+*The form of Correct drift (time-lapse) in Fiji, on the published large-drift
+movie. Advanced settings are at the bottom.*
+
+![Correct drift in Fiji](assets/fiji_correct_drift.png)
+
+*The raw movie (left) and the corrected one (`Fast4DRegPy:registered`), both at
+the last timepoint, and the drift table. The result is a hyperstack with its Z
+and T sliders.*
 
 ![Align channels in Fiji](assets/fiji_align_channels.png)
 
-*Align channels in Fiji on a 3-channel image: the aligned stack and the shift
-of each channel.*
+*Align channels in Fiji on the published calibration slide (3 channels × 25
+slices, XY and Z): the raw image (left), the aligned one and the shift of each
+channel. Both are shown as composites (Image > Color > Make Composite) so the
+colour fringes of the raw beads are visible.*
 
 ## The settings
 
@@ -73,10 +82,10 @@ the same names, plus **Axes**. The **Reference channel** is counted from 0
 
 ## Good to know
 
-- **A corrected movie with several dimensions opens in Fiji as one long
-  stack.** Use *Image > Hyperstacks > Stack to Hyperstack*, with the numbers
-  of slices and frames of your movie, to get the sliders back. napari keeps
-  the dimensions.
+- **Results keep their dimensions.** In Fiji the corrected movie opens as a
+  hyperstack with its time points, slices and channels (with LabConstrictor
+  tools 0.3.0a4 or later; older ones give one long stack, fixed with *Image >
+  Hyperstacks > Stack to Hyperstack*). napari keeps the dimensions.
 - **Corrected images are 32-bit** (`float32`) unless you choose the output type
   `input` (advanced settings).
 - **The result is a copy.** Your image is not changed. The result files

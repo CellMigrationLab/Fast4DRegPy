@@ -1,34 +1,70 @@
-# Use notebooks after installation
+# Open and use an app
 
-After you install the desktop application, this guide will show you how to use the Jupyter notebooks that come with it.
+You installed a LabConstrictor app ([how to install](install.md)). From here: open it, try the app's example, then use your own data.
 
-## 1. Launching the Application
+Want to see the idea first? The [interactive demo](https://cellmigrationlab.github.io/LabConstrictor-Site/demo/) lets you try a notebook, napari and Fiji with example data before you install anything.
 
-To open the application, go to the Start Menu on Windows or Linux, or the Applications folder on macOS. Search for the application name and click its icon to start it.
+## Open the app
 
-## 2. Welcome Notebook
+Start the app from the Start Menu (Windows), the Applications folder (macOS) or your applications menu (Linux): search for its name and click its icon.
 
-When you start the application, a terminal will pop up.
-
-> Don't be scared by the terminal, it is normal: it keeps your Jupyter Lab session running. **Do not close the terminal** until you have finished working with your notebooks. When you have, stop the Jupyter Lab session with **File > Shut Down** in Jupyter Lab (or click on the terminal window and press `Ctrl+C`). The terminal then asks you to press `Enter`, and closes.
-
-After some seconds, Jupyter Lab will open in your default web browser. The welcome notebook will appear automatically:
+A terminal window opens first. It keeps JupyterLab running: leave it open while you work. After a few seconds, JupyterLab opens in your web browser with the **Welcome notebook**:
 
 ![Welcome Notebook](https://github.com/CellMigrationLab/LabConstrictor/blob/doc_source/Welcome_Notebook.png)
 
-### Updating a notebook
+## Open a notebook from the Welcome notebook
 
-When a newer version of a notebook is published, the Welcome notebook shows **Update** next to it. Updating replaces your copy of the notebook, so before anything changes it asks you to confirm, and it keeps your current copy, with your changes and outputs, as `<notebook>.backup-<date>.ipynb` in the same folder. Close the notebook's tab before updating: otherwise JupyterLab can save the old copy over the new one. If the download fails, your notebook is not changed.
+Run the cell of the Welcome notebook. It shows a table of the app's notebooks, with their version and whether a newer version exists. Click **Open the notebook** in the last column to open a notebook in a new tab.
 
-## 3. How to Run Notebooks?
+If the app's repository on GitHub is private, the Welcome notebook asks for a GitHub personal access token to check for new versions: see [Generate a GitHub personal access token](personal_access_token.md).
 
-You might be used to work with notebooks on JupyterLab (in case you need some guidance on JupyterLab check [this guide](https://github.com/CellMigrationLab/docs-hub/blob/main/docs/JupyterLab/JupyterLab_Guide.md)). Still, LabConstrictor uses some features that can slightly change how you interact with notebooks. Please check [this guide](code_hiding.md) to understand how to run notebooks packaged with LabConstrictor.
+## Run a notebook
 
-## 4. Accessing your Notebooks
+Follow the instructions written in the notebook, and run its cells from top to bottom. Notebooks made with LabConstrictor often hide their code. Run a cell with the play button next to it, if there is one, or select the cell and click the play button in the top toolbar:
 
-Once you run the welcome notebook, a dashboard will show a list of available notebooks. It looks similar to the screenshot in the [Welcome Notebook](#2-welcome-notebook) step.
+![Toolbar Play Button](https://github.com/CellMigrationLab/LabConstrictor/blob/doc_source/Notebook_Play_Button.png)
 
-In the last column of the dashboard, you'll see a button called `Open the notebook`. Click it to open that notebook in a new tab and run it just like you did with the welcome notebook.
+The **Show/Hide Code** button in the top toolbar shows or hides the code of every cell:
+
+![Show Hide Code Button](https://github.com/CellMigrationLab/LabConstrictor/blob/doc_source/Notebook_ShowHide_Button.png)
+
+New to JupyterLab? See [this JupyterLab guide](https://github.com/CellMigrationLab/docs-hub/blob/main/docs/JupyterLab/JupyterLab_Guide.md).
+
+## Try the app's example
+
+Look for an example in the app's documentation: the **Documentation** or **README** link on its page in the [App Centre](https://cellmigrationlab.github.io/LabConstrictor-Site/apps/). If it has one, run it first and compare your result with the one it describes. What an app does, and what its notebooks expect, is described there.
+
+## Use it in napari, Fiji or QuPath
+
+Some apps also have **tools**: analyses you run from napari, Fiji or QuPath on the image you have open, with a form for the settings and the results drawn on the image. The app's page in the [App Centre](https://cellmigrationlab.github.io/LabConstrictor-Site/apps/) shows which programs it works in. Install the plugin for your program once: [Use apps inside napari, Fiji and QuPath](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/image-software/) explains how.
+
+## Keep your results
+
+Each notebook decides where it writes its results. Note the folder it names before you close JupyterLab, and copy what you want to keep.
+
+## Use it without installing
+
+Many apps also run in Google Colab. The app's page in the [App Centre](https://cellmigrationlab.github.io/LabConstrictor-Site/apps/) lists its Colab notebooks and, when it has one, a pip command.
+
+## Update a notebook
+
+When a newer version of a notebook is published, the Welcome notebook shows **Update** next to it.
+
+1. Close the notebook's tab first. Otherwise JupyterLab can save the old copy over the new one.
+2. Click **Update**, then confirm with **Back up and update**.
+
+Your current copy, with your changes and outputs, is kept as `<notebook>.backup-<date>.ipynb` in the same folder. If the download fails, your notebook is not changed.
+
+## Close the app
+
+When you have finished, stop JupyterLab with **File > Shut Down** (or click the terminal window and press `Ctrl+C`). The terminal then asks you to press `Enter`, and closes.
+
+## If something does not work
+
+- Windows and macOS warn about installers that are not code-signed yet, and both have a way to continue: see [Install an app](install.md).
+- [Troubleshooting an installed app](troubleshooting_installed_app.md) covers problems with an app on your computer.
+- [Find your problem](https://cellmigrationlab.github.io/LabConstrictor-Site/guides/help/) lists what you may see and where each is explained.
+- Open an issue in the app's repository: the **Report a problem** link on its page in the App Centre, when the repository has an issue tracker.
 
 
 ---
